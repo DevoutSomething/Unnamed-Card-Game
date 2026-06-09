@@ -9,9 +9,11 @@ namespace Game.Core.State {
         public Lane[] Lanes;
         public int SlotIndex { get; private set; }
 
+        public Game.Core.Util.GameRng RNG { get; }
         
         public GameState(int seed) {
             Seed = seed;
+            RNG = new Game.Core.Util.GameRng(seed);
             Players = new[] { new Player(0), new Player(1) };
             CurrentPhase = Phase.P1Action;
             Lanes = new Lane[5];

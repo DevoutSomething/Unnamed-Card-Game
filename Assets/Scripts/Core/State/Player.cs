@@ -7,6 +7,15 @@ namespace Game.Core.State {
         public int MaxHealth { get; private set; }
         public int Gold { get; private set; }
 
+        public int TurnNumber;   
+        public int SlotIndex;      
+
+        public Slot CurrentSlot => Rotation.Sequence[SlotIndex];
+        public int ActivePlayerId => CurrentSlot.PlayerId;
+        public SlotType CurrentSlotType => CurrentSlot.Type;
+
+
+
         public List<CardInstance> cardsInHand = new List<CardInstance>();
         public List<CardInstance> cardsInDeck = new List<CardInstance>();
         public Player(int id) {
