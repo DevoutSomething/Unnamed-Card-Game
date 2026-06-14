@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Game.Cards;
 
 namespace Game.Core.State {
     public class Player {
@@ -25,14 +26,6 @@ namespace Game.Core.State {
             Gold = 0;
         }
 
-        public List<Attributes> PlayerAttributes = new List<Attributes>();
-    }
-
-    public enum Attributes {
-        Tank,
-        Healer,
-        Assasin, 
-        Bruiser, 
-        Mage,
+        public List<Archetype> Archetypes = new List<Archetype>();
     }
 }
