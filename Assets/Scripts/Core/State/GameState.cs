@@ -1,4 +1,5 @@
-namespace Game.Core.State {
+namespace Game.Core.State
+{
     public class GameState {
         public int Seed { get; }
         public int Tick { get; private set; } 
@@ -11,14 +12,15 @@ namespace Game.Core.State {
 
         public Game.Core.Util.GameRng RNG { get; }
         
-        public GameState(int seed) {
+        public int NextCardInstanceId { get; set; } = 1;
+        public GameState(int seed, int laneCount = 5, int slotsPerSide = 2) {
             Seed = seed;
             RNG = new Game.Core.Util.GameRng(seed);
             Players = new[] { new Player(0), new Player(1) };
             CurrentPhase = Phase.P1Action;
-            Lanes = new Lane[5];
+            Lanes = new Lane[laneCount];
             for (int i = 0; i < Lanes.Length; i++) {
-                Lanes[i] = new Lane(position: i, slotsPerSide: 2);
+                Lanes[i] = new Lane(position: i, slotsPerSide: slotsPerSide);
             }
         }
     }

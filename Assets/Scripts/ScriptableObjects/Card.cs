@@ -17,11 +17,13 @@ namespace Game.Cards {
         [Header("Costs")]
         public int EnergyCost;   // cost to play the card during a match
         public int GoldCost;     // cost to buy the card in the shop
-
+        
         [Header("Info")]
         [TextArea] public string Description;
         public Rarity Rarity;
         public List<Archetype> Archetypes = new();
+
+
     }
 
     /// <summary>
