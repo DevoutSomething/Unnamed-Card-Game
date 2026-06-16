@@ -77,6 +77,22 @@ namespace Game.Cards {
 
         public bool IsCompatibleWith(CardArt art) => CardBorder.HasAllTags(art, RequiredArtTags);
     }
+    /// <summary>
+    /// A card back: Like border, but is instead the art on the back of a card
+    /// and is only visible when the card is face down. Is the same for all cards in a deck
+    /// so will not be stored in card skin but instead in deck or player profile
+    /// </summary>
+    [CreateAssetMenu(menuName = "Cards/Skins/Back")]
+    public class CardBack : ScriptableObject {
+        public string BackId;
+        public Sprite Image;
+        public UnlockSource Unlock = UnlockSource.Default;
+
+        [Tooltip("When Unlock == Rarity, the back used as the default for this rarity.")]
+        public Rarity RarityForDefault;
+    }
+
+
 
     /// <summary>
     /// A composed skin: one art + one border + one layout. Combos are assembled
@@ -88,7 +104,6 @@ namespace Game.Cards {
         public CardArt Art;
         public CardBorder Border;
         public CardLayout Layout;
-
         public bool IsValid(out string error) {
             error = null;
             if (Border != null && !Border.IsCompatibleWith(Art)) {

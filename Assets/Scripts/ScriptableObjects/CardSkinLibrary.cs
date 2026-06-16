@@ -14,6 +14,7 @@ namespace Game.Cards {
         public List<CardArt> Arts = new();
         public List<CardBorder> Borders = new();
         public List<CardLayout> Layouts = new();
+        public List<CardBack> Backs = new();
 
         [Tooltip("Fallback layout used when no rarity/card-specific layout applies.")]
         public CardLayout DefaultLayout;

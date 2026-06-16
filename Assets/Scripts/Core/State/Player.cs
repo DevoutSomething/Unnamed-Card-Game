@@ -16,7 +16,9 @@ namespace Game.Core.State {
         public SlotType CurrentSlotType => CurrentSlot.Type;
 
 
-
+        //card back is stored in player object, as cardback will be the same across all cards in a deck
+        //regardless of card rarity or art/border customizations so as not to give away info about the players hand
+        public CardBack CardBack;
         public List<CardInstance> cardsInHand = new List<CardInstance>();
         public List<CardInstance> cardsInDeck = new List<CardInstance>();
         public Player(int id) {
