@@ -4,9 +4,9 @@ using Game.Cards;
 namespace Game.Core.State {
     public class Player {
         public int Id { get; }
-        public int Health { get; private set; }
-        public int MaxHealth { get; private set; }
-        public int Gold { get; private set; }
+        public int Health;
+        public int MaxHealth;
+        public int Gold;
 
         public int TurnNumber;   
         public int SlotIndex;      

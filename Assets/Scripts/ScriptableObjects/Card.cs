@@ -35,6 +35,8 @@ namespace Game.Cards {
         [Header("Guy Stats")]
         public int BaseAttack;
         public int BaseHealth;
+
+
         public List<string> Abilities = new();
 
         [Tooltip("Gold awarded to the opponent when this guy is killed (seeds CardInstance.KillRewardGold).")]
