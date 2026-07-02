@@ -7,6 +7,8 @@ namespace Game.Core.State {
         public int Health;
         public int MaxHealth;
         public int Gold;
+        public int CurrentEnergy;
+        public int EnergyPerTurn;
 
         public int TurnNumber;   
         public int SlotIndex;      

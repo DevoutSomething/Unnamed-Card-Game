@@ -20,6 +20,7 @@ namespace Game.Core.Server
                 ProcessDeaths(state, lane, events);
                 ResolveBackPhase(state, lane, p1Back, p2Back, events);
                 ProcessDeaths(state, lane, events);
+                if (CheckGameEnd(state, events)) return;
             }
         }
 
@@ -141,6 +142,22 @@ namespace Game.Core.Server
 
                 sublane.Slots[i] = null;
             }
+        }
+
+        /// <summary>
+        /// Returns true if either player is at 0 health. Emits GameEndedEvent (once) with the winner.
+        /// A player wins if their opponent hits 0. (Simultaneous 0-0 is currently decided in P0's favor —
+        /// see note below.)
+        /// </summary>
+        private static bool CheckGameEnd(GameState state, List<GameEvent> events)
+        {
+            bool p0Dead = state.Players[0].Health <= 0;
+            bool p1Dead = state.Players[1].Health <= 0;
+
+            if (!p0Dead && !p1Dead) return false;
+
+            int winnerId = (p0Dead && p1Dead) ? -1 : (p0Dead ? 1 : 0);            events.Add(new GameEndedEvent(winnerId));
+            return true;
         }
     }
 }

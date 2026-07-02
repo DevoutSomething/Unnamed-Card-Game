@@ -7,6 +7,12 @@ namespace Game.Core.State
         public int ActivePlayerIndex { get; private set; }
         public Phase CurrentPhase { get; private set; }
 
+        public bool IsGameOver {
+            get {
+                return Players[0].Health <= 0 || Players[1].Health <= 0;
+            }
+        }
+
         public Lane[] Lanes;
         public int SlotIndex { get; private set; }
 

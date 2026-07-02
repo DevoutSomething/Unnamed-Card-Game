@@ -33,4 +33,7 @@ namespace Game.Core.Events
     public record AugmentSelectedEvent(int PlayerId, string AugmentId) : GameEvent;
 
     public record CommandRejectedEvent(Command Command, string Reason) : GameEvent;
+
+    public record EnergyChangedEvent(int PlayerId, int NewEnergy, int NewCap) : GameEvent;
+
 }

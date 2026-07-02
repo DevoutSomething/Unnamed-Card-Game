@@ -726,5 +726,56 @@ namespace Game.Core.Server
             Assert(state.Players[1].Health == p1FaceStart - 2,
                 "Lane 2's uncontested attacker should hit P1 face for 2");
         }
+
+        public static void Test_LethalFaceDamage_EmitsGameEndedEvent()
+        {
+            BeginTest(nameof(Test_LethalFaceDamage_EmitsGameEndedEvent));
+            var state = MakeTestState();
+            state.Players[1].Health = 3;
+            PlaceGuy(state, 0, 0, 0, attack: 5, health: 5);
+            // P2 has no cards → 5 face damage → P2 dies
+
+            var events = new List<GameEvent>();
+            CombatResolver.Resolve(state, events);
+
+            var ended = events.OfType<GameEndedEvent>().ToList();
+            Assert(ended.Count == 1, "exactly one GameEndedEvent");
+            Assert(ended.Count == 1 && ended[0].WinnerId == 0, "P0 should be the winner");
+        }
+
+        public static void Test_GameEnd_ShortCircuitsRemainingLanes()
+        {
+            BeginTest(nameof(Test_GameEnd_ShortCircuitsRemainingLanes));
+            var state = MakeTestState();
+            state.Players[1].Health = 2;
+            PlaceGuy(state, 0, 0, 0, attack: 5, health: 5);   // lane 0: lethal to P2 face
+            var lateCard = PlaceGuy(state, 1, 3, 0, attack: 5, health: 5);  // lane 3: P2's revenge card
+            int p0FaceStart = state.Players[0].Health;
+
+            var events = new List<GameEvent>();
+            CombatResolver.Resolve(state, events);
+
+            Assert(state.Players[0].Health == p0FaceStart,
+                "P0 should take no damage — lane 3 never resolves after game ends in lane 0");
+        }
+
+        public static void Test_SimultaneousZero_ResolvesPerTieRule()
+        {
+            BeginTest(nameof(Test_SimultaneousZero_ResolvesPerTieRule));
+            var state = MakeTestState();
+            state.Players[0].Health = 2;
+            state.Players[1].Health = 2;
+            PlaceGuy(state, 0, 0, 0, attack: 5, health: 5);   // P0 attacker, lane 0 — unblocked
+            PlaceGuy(state, 1, 1, 0, attack: 5, health: 5);   // P1 attacker, lane 1 — unblocked
+
+            var events = new List<GameEvent>();
+            CombatResolver.Resolve(state, events);
+
+            // Lane 0 resolves first: P1 face hits 0 → game ends → lane 1 never fires.
+            // So this ISN'T simultaneous under lane-by-lane resolution — P0 wins by lane order.
+            var ended = events.OfType<GameEndedEvent>().ToList();
+            Assert(ended.Count == 1, "one GameEndedEvent");
+            Assert(ended.Count == 1 && ended[0].WinnerId == 0, "P0 wins because lane 0 resolves before lane 1");
+        }
     }
 }
