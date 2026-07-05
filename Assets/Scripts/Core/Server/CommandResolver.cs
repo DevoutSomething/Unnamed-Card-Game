@@ -47,9 +47,9 @@ namespace Game.Core.Server
                 BuildTestDeck(state, player);
                 state.Rng.Shuffle(player.Deck);
 
-                player.EnergyCap = StartingEnergyCap;
-                player.Energy = player.EnergyCap;
-                events.Add(new EnergyChangedEvent(player.Id, player.Energy, player.EnergyCap));
+                player.EnergyPerTurn = StartingEnergyCap;
+                player.CurrentEnergy = player.EnergyPerTurn;
+                events.Add(new EnergyChangedEvent(player.Id, player.CurrentEnergy, player.EnergyPerTurn));
 
                 for (int i = 0; i < StartingHandSize; i++)
                 {
@@ -89,16 +89,16 @@ namespace Game.Core.Server
             }
 
             var player = state.Players[cmd.PlayerId];
-            var card = player.Hand.Find(c => c.InstanceId == cmd.CardInstanceId);
+            var card = player.cardsInHand.Find(c => c.InstanceId == cmd.CardInstanceId);
             if (card == null)
             {
                 events.Add(new CommandRejectedEvent(cmd, "card not in your hand"));
                 return;
             }
 
-            if (card.CurrentCost > player.Energy)
+            if (card.CurrentCost > player.CurrentEnergy)
             {
-                events.Add(new CommandRejectedEvent(cmd, $"not enough energy (have {player.Energy}, need {card.CurrentCost})"));
+                events.Add(new CommandRejectedEvent(cmd, $"not enough energy (have {player.CurrentEnergy}, need {card.CurrentCost})"));
                 return;
             }
 
@@ -116,10 +116,10 @@ namespace Game.Core.Server
                 return;
             }
 
-            player.Energy -= card.CurrentCost;
-            events.Add(new EnergyChangedEvent(player.Id, player.Energy, player.EnergyCap));
+            player.CurrentEnergy -= card.CurrentCost;
+            events.Add(new EnergyChangedEvent(player.Id, player.CurrentEnergy, player.EnergyPerTurn));
 
-            player.Hand.Remove(card);
+            player.cardsInHand.Remove(card);
             sublane.Place(card, slot);
             events.Add(new CardPlayedEvent(cmd.PlayerId, card.InstanceId, cmd.LaneIndex, slot));
         }
@@ -181,9 +181,9 @@ namespace Game.Core.Server
         {
             foreach (var player in state.Players)
             {
-                player.EnergyCap += EnergyCapGrowthPerBlock;
-                player.Energy = player.EnergyCap;
-                events.Add(new EnergyChangedEvent(player.Id, player.Energy, player.EnergyCap));
+                player.EnergyPerTurn += EnergyCapGrowthPerBlock;
+                player.CurrentEnergy = player.EnergyPerTurn;
+                events.Add(new EnergyChangedEvent(player.Id, player.CurrentEnergy, player.EnergyPerTurn));
 
                 for (int i = 0; i < CardsDrawnPerBlock; i++)
                 {
@@ -198,7 +198,7 @@ namespace Game.Core.Server
 
             var card = player.Deck[0];
             player.Deck.RemoveAt(0);
-            player.Hand.Add(card);
+            player.cardsInHand.Add(card);
             events.Add(new CardDrawnEvent(player.Id, card.InstanceId));
         }
 

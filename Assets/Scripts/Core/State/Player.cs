@@ -13,7 +13,7 @@ namespace Game.Core.State {
         public int TurnNumber;   
         public int SlotIndex;      
 
-        public Slot CurrentSlot => Rotation.Sequence[SlotIndex];
+        public Slot CurrentSlot => Rotation.Slots[SlotIndex];
         public int ActivePlayerId => CurrentSlot.PlayerId;
         public SlotType CurrentSlotType => CurrentSlot.Type;
 
@@ -23,6 +23,8 @@ namespace Game.Core.State {
         public CardBack CardBack;
         public List<CardInstance> cardsInHand = new List<CardInstance>();
         public List<CardInstance> cardsInDeck = new List<CardInstance>();
+        public List<CardInstance> Deck = new List<CardInstance>();
+
         public Player(int id) {
             Id = id;
             Health = 100;

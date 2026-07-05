@@ -21,5 +21,27 @@ public class Sublane {
     public int FirstEmptySlot => Array.IndexOf(Slots, null);
     public int OccupiedCount => Slots.Count(s => s != null);
     public IEnumerable<CardInstance> Cards => Slots.Where(s => s != null);
+
+    /// Turns a requested slot into an actual placeable slot index.
+    /// requested >= 0: that exact slot if in range and empty, else -1.
+    /// requested == -1: first empty slot, or -1 if full.
+    public int ResolveSlot(int requested)
+    {
+        if (requested >= 0)
+        {
+            if (requested < Slots.Length && Slots[requested] == null) return requested;
+            return -1;
+        }
+        return FirstEmptySlot;   // Array.IndexOf already returns -1 when full
+    }
+
+    public void Place(CardInstance card, int slot)
+    {
+        Slots[slot] = card;
+    }
+
+    public void RemoveAt(int slot) => Slots[slot] = null;
+
+
 }
 }
