@@ -1,0 +1,8 @@
+{
+    "borders": [
+        { "borderId": "common", "unlock": "Rarity", "rarityForDefault": "Common", "requiredArtTags": [] },
+        { "borderId": "rare", "unlock": "Rarity", "rarityForDefault": "Rare", "requiredArtTags": [] },
+        { "borderId": "epic", "unlock": "Rarity", "rarityForDefault": "Epic", "requiredArtTags": [] },
+        { "borderId": "legendary", "unlock": "Rarity", "rarityForDefault": "Legendary", "requiredArtTags": [] }
+    ]
+}

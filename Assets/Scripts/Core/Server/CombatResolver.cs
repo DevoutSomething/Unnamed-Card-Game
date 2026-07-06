@@ -132,6 +132,18 @@ namespace Game.Core.Server
                 {
                     int opposingPlayerId = 1 - card.OwnerId;
                     MutationHelper.GiveGold(state.Players[opposingPlayerId], card.KillRewardGold, events);
+
+                    // Bounty: the killer's own "gain gold on kill" ability.
+                    var killer = state.FindCardInLanes(card.LastDamagerCardId);
+                    if (killer != null)
+                    {
+                        int bounty = Game.Core.Abilities.AbilityRuntime.Sum(
+                            killer,
+                            Game.Core.Abilities.AbilityTrigger.OnKill,
+                            Game.Core.Abilities.AbilityEffect.GainGold,
+                            Game.Core.Abilities.AbilityTarget.Owner);
+                        MutationHelper.GiveGold(state.Players[killer.OwnerId], bounty, events);
+                    }
                 }
 
                 events.Add(new CardDiedEvent( 

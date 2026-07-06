@@ -49,13 +49,25 @@ namespace Game.Cards {
         [Tooltip("If non-empty, this border is only valid with arts that have ALL of these tags.")]
         public List<string> RequiredArtTags = new();
 
+        [Tooltip("If non-empty, this border is only valid on cards that have ALL of these meta tags (CardDefinition.Tags).")]
+        public List<string> RequiredCardTags = new();
+
         public bool IsCompatibleWith(CardArt art) => HasAllTags(art, RequiredArtTags);
+        public bool IsCompatibleWith(CardDefinition card) => HasAllCardTags(card, RequiredCardTags);
 
         internal static bool HasAllTags(CardArt art, List<string> required) {
             if (required == null || required.Count == 0) return true;
             if (art == null) return false;
             foreach (var t in required)
                 if (!art.HasTag(t)) return false;
+            return true;
+        }
+
+        internal static bool HasAllCardTags(CardDefinition card, List<string> required) {
+            if (required == null || required.Count == 0) return true;
+            if (card == null) return false;
+            foreach (var t in required)
+                if (!card.HasTag(t)) return false;
             return true;
         }
     }
@@ -75,7 +87,11 @@ namespace Game.Cards {
         [Tooltip("If non-empty, this layout is only valid with arts that have ALL of these tags.")]
         public List<string> RequiredArtTags = new();
 
+        [Tooltip("If non-empty, this layout is only valid on cards that have ALL of these meta tags (CardDefinition.Tags).")]
+        public List<string> RequiredCardTags = new();
+
         public bool IsCompatibleWith(CardArt art) => CardBorder.HasAllTags(art, RequiredArtTags);
+        public bool IsCompatibleWith(CardDefinition card) => CardBorder.HasAllCardTags(card, RequiredCardTags);
     }
     /// <summary>
     /// A card back: Like border, but is instead the art on the back of a card
@@ -112,6 +128,30 @@ namespace Game.Cards {
             }
             if (Layout != null && !Layout.IsCompatibleWith(Art)) {
                 error = $"Layout '{Layout.LayoutId}' is not compatible with art '{Art?.ArtId}'.";
+                return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Full validation against a specific card: the part-to-part rules of
+        /// IsValid, plus that the art actually belongs to this card and that the
+        /// border/layout accept the card's meta tags (CardDefinition.Tags).
+        /// </summary>
+        public bool IsValidFor(CardDefinition card, out string error) {
+            if (!IsValid(out error)) return false;
+            if (card == null) return true;   // no card context -> part checks only
+
+            if (Art != null && Art.CardId != card.CardId) {
+                error = $"Art '{Art.ArtId}' belongs to card '{Art.CardId}', not '{card.CardId}'.";
+                return false;
+            }
+            if (Border != null && !Border.IsCompatibleWith(card)) {
+                error = $"Border '{Border.BorderId}' requires card meta tags [{string.Join(", ", Border.RequiredCardTags)}] that '{card.CardId}' lacks.";
+                return false;
+            }
+            if (Layout != null && !Layout.IsCompatibleWith(card)) {
+                error = $"Layout '{Layout.LayoutId}' requires card meta tags [{string.Join(", ", Layout.RequiredCardTags)}] that '{card.CardId}' lacks.";
                 return false;
             }
             return true;

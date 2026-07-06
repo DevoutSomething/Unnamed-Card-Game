@@ -1,0 +1,19 @@
+{
+    "cardId": "goblin_01",
+    "type": "guy",
+    "displayName": "Goblin",
+    "energyCost": 1,
+    "goldCost": 3,
+    "description": "Bounty 2. A small greedy guy.",
+    "rarity": "Common",
+    "archetypes": [
+        "Bruiser"
+    ],
+    "tags": [],
+    "baseAttack": 2,
+    "baseHealth": 1,
+    "abilities": [
+        { "id": "bounty", "x": 2 }
+    ],
+    "killRewardGold": 5
+}

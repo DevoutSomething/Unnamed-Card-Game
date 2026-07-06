@@ -26,6 +26,7 @@ namespace Game.Core.Events
     public record EventTriggeredEvent(string EventId) : GameEvent;
 
     public record ShopRefreshedEvent(int PlayerId) : GameEvent;
+    public record CardGrantedEvent(int PlayerId, int CardInstanceId, string DefinitionId, string Zone) : GameEvent;
     public record CardBoughtEvent(int PlayerId, int CardInstanceId, int Cost) : GameEvent;
     public record CardRemovedFromDeckEvent(int PlayerId, int CardInstanceId, int Cost) : GameEvent;
 

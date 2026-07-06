@@ -1,0 +1,17 @@
+{
+    "cardId": "hedgehog_01",
+    "type": "guy",
+    "displayName": "Hedgehog",
+    "energyCost": 2,
+    "goldCost": 4,
+    "description": "Thorns 2. Do not touch.",
+    "rarity": "Common",
+    "archetypes": ["Tank"],
+    "tags": [],
+    "baseAttack": 1,
+    "baseHealth": 4,
+    "abilities": [
+        { "id": "thorns", "x": 2 }
+    ],
+    "killRewardGold": 6
+}

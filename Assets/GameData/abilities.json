@@ -1,0 +1,34 @@
+{
+    "abilities": [
+        {
+            "abilityId": "armored",
+            "displayName": "Armored",
+            "description": "Takes {X} less damage from attacks.",
+            "trigger": "OnDamaged",
+            "effect": "ReduceDamage",
+            "target": "Self",
+            "costPerX": 1.0,
+            "flatCost": 0.5
+        },
+        {
+            "abilityId": "thorns",
+            "displayName": "Thorns",
+            "description": "When attacked, deals {X} damage back to the attacker.",
+            "trigger": "OnDamaged",
+            "effect": "DealDamage",
+            "target": "Attacker",
+            "costPerX": 0.75,
+            "flatCost": 0.25
+        },
+        {
+            "abilityId": "bounty",
+            "displayName": "Bounty",
+            "description": "Gain {X} gold when this guy kills another guy.",
+            "trigger": "OnKill",
+            "effect": "GainGold",
+            "target": "Owner",
+            "costPerX": 0.5,
+            "flatCost": 0.25
+        }
+    ]
+}

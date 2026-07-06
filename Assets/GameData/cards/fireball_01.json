@@ -1,0 +1,15 @@
+{
+    "cardId": "fireball_01",
+    "type": "spell",
+    "displayName": "Fireball",
+    "energyCost": 2,
+    "goldCost": 4,
+    "description": "Deal 3 damage to a guy.",
+    "rarity": "Rare",
+    "archetypes": ["Mage"],
+    "tags": [],
+    "baseAttack": 0,
+    "baseHealth": 0,
+    "abilities": [],
+    "killRewardGold": 0
+}

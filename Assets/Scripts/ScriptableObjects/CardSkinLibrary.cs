@@ -80,9 +80,25 @@ namespace Game.Cards {
             CardArt baseArt = DefaultArtFor(card.CardId);
             return new CardSkin {
                 Art = baseArt,
-                Border = DefaultBorderFor(card.Rarity),
+                Border = DefaultBorderFor(card),
                 Layout = DefaultLayout,
             };
+        }
+
+        /// <summary>
+        /// Like TryCompose, but also enforces the card-level rules: the art must
+        /// belong to the card and border/layout must accept its meta tags.
+        /// Use this when composing a skin for a known card (the usual case).
+        /// </summary>
+        public bool TryComposeFor(CardDefinition card, string artId, string borderId, string layoutId,
+                                  out CardSkin skin, out string error) {
+            EnsureLoaded();
+            skin = new CardSkin {
+                Art = FindById(_arts, a => a.ArtId, artId),
+                Border = FindById(_borders, b => b.BorderId, borderId),
+                Layout = FindById(_layouts, l => l.LayoutId, layoutId),
+            };
+            return skin.IsValidFor(card, out error);
         }
 
         /// <summary>
@@ -124,9 +140,10 @@ namespace Game.Cards {
             return fallback;
         }
 
-        CardBorder DefaultBorderFor(Rarity rarity) {
+        CardBorder DefaultBorderFor(CardDefinition card) {
             foreach (var b in _borders)
-                if (b != null && b.Unlock == UnlockSource.Rarity && b.RarityForDefault == rarity)
+                if (b != null && b.Unlock == UnlockSource.Rarity && b.RarityForDefault == card.Rarity
+                    && b.IsCompatibleWith(card))
                     return b;
             return null;
         }

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Game.Core.Abilities;
 using UnityEngine;
 
 namespace Game.Cards {
@@ -23,7 +24,12 @@ namespace Game.Cards {
         public Rarity Rarity;
         public List<Archetype> Archetypes = new();
 
+        [Header("Meta")]
+        [Tooltip("Free-form meta tags (e.g. 'dragon', 'starter'). Cosmetic parts and future rules " +
+                 "can require these to decide what is valid for this card.")]
+        public List<string> Tags = new();
 
+        public bool HasTag(string tag) => Tags != null && Tags.Contains(tag);
     }
 
     /// <summary>
@@ -37,7 +43,8 @@ namespace Game.Cards {
         public int BaseHealth;
 
 
-        public List<string> Abilities = new();
+        [Tooltip("Ability keywords + magnitudes (defined in Assets/GameData/abilities.json).")]
+        public List<AbilityRef> Abilities = new();
 
         [Tooltip("Gold awarded to the opponent when this guy is killed (seeds CardInstance.KillRewardGold).")]
         public int KillRewardGold;

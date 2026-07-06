@@ -22,8 +22,10 @@ namespace Game.Core.State {
         //regardless of card rarity or art/border customizations so as not to give away info about the players hand
         public CardBack CardBack;
         public List<CardInstance> cardsInHand = new List<CardInstance>();
-        public List<CardInstance> cardsInDeck = new List<CardInstance>();
         public List<CardInstance> Deck = new List<CardInstance>();
+
+        // Cards currently offered to this player in the shop phase.
+        public List<CardInstance> ShopOffers = new List<CardInstance>();
 
         public Player(int id) {
             Id = id;

@@ -1,0 +1,5 @@
+{
+    "statWeights": { "attack": 1.0, "health": 1.0 },
+    "budget": { "base": 1.5, "perEnergy": 2.5 },
+    "tolerancePoints": 1.0
+}

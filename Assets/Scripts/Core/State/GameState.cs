@@ -21,6 +21,19 @@ namespace Game.Core.State
 
         public int NextCardInstanceId { get; set; } = 1;
 
+        /// <summary>The live card with this instance id in any lane slot, or null.</summary>
+        public CardInstance FindCardInLanes(int instanceId)
+        {
+            foreach (var lane in Lanes)
+            {
+                foreach (var card in lane.P1.Slots)
+                    if (card != null && card.InstanceId == instanceId) return card;
+                foreach (var card in lane.P2.Slots)
+                    if (card != null && card.InstanceId == instanceId) return card;
+            }
+            return null;
+        }
+
         public GameState(int seed, int laneCount = 5, int slotsPerSide = 2)
         {
             Seed = seed;
