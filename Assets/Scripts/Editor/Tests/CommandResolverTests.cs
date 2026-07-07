@@ -1,15 +1,20 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Game.Cards;
 using Game.Core.Commands;
 using Game.Core.Events;
 using Game.Core.Server;
 using Game.Core.State;
+using UnityEngine;
 
 namespace Game.Core.Tests
 {
     public class CommandResolverTests
     {
+        [TearDown]
+        public void ResetCatalog() => CardCatalogRuntime.Configure(null);
+
         // ---------- helpers ----------
 
         private static GameState NewGame(int seed = 42)
@@ -50,10 +55,11 @@ namespace Game.Core.Tests
         {
             var state = NewGame();
 
-            // P0's first turn starts immediately, so P0 has the opening hand (4)
-            // plus their first turn draw; P1 draws when their first slot begins.
-            Assert.AreEqual(5, state.Players[0].cardsInHand.Count, "P0 hand: 4 dealt + 1 turn draw");
-            Assert.AreEqual(5, state.Players[0].Deck.Count, "P0 deck: 10 - 5");
+            // Card draw only happens at StartNewEnergyBlock (both players
+            // together, when a Combat slot resolves) — the opening deal is the
+            // only thing in either hand until the first combat.
+            Assert.AreEqual(4, state.Players[0].cardsInHand.Count, "P0 hand: dealt only");
+            Assert.AreEqual(6, state.Players[0].Deck.Count, "P0 deck: 10 - 4");
             Assert.AreEqual(4, state.Players[1].cardsInHand.Count, "P1 hand: dealt only");
             Assert.AreEqual(6, state.Players[1].Deck.Count, "P1 deck: 10 - 4");
 
@@ -89,7 +95,7 @@ namespace Game.Core.Tests
 
             Assert.AreEqual(1, events.OfType<GameStartedEvent>().Count());
             Assert.AreEqual(2, events.OfType<EnergyChangedEvent>().Count(), "one per player");
-            Assert.AreEqual(9, events.OfType<CardDrawnEvent>().Count(), "4 per player + P0's first turn draw");
+            Assert.AreEqual(8, events.OfType<CardDrawnEvent>().Count(), "4 per player, opening deal only");
             Assert.AreEqual(1, events.OfType<SlotChangedEvent>().Count());
             AssertNoRejections(events);
         }
@@ -181,7 +187,7 @@ namespace Game.Core.Tests
 
             AssertRejected(events);
             Assert.AreEqual(1, p0.CurrentEnergy, "energy untouched after rejection");
-            Assert.AreEqual(5, p0.cardsInHand.Count, "hand untouched after rejection (4 dealt + turn draw)");
+            Assert.AreEqual(4, p0.cardsInHand.Count, "hand untouched after rejection (dealt only)");
         }
 
         [Test]
@@ -230,6 +236,44 @@ namespace Game.Core.Tests
             Assert.IsNull(sublane.Slots[1], "must NOT silently fall back to another slot");
         }
 
+        // ---------- PlayCard: guy/spell slot gating ----------
+
+        [Test]
+        public void PlayCard_GuyRejectedOnBonusSlot_SpellStillAllowed()
+        {
+            var guyDef = ScriptableObject.CreateInstance<GuyCardDefinition>();
+            guyDef.CardId = "test_guy";
+            guyDef.EnergyCost = 0;
+            guyDef.BaseAttack = 1;
+            guyDef.BaseHealth = 1;
+
+            var spellDef = ScriptableObject.CreateInstance<SpellCardDefinition>();
+            spellDef.CardId = "test_spell";
+            spellDef.EnergyCost = 0;
+
+            CardCatalogRuntime.Configure(new CardDefinition[] { guyDef, spellDef });
+
+            var state = NewGame();
+            var p1 = state.Players[1];
+            var guy = new CardInstance { InstanceId = 9001, DefinitionId = "test_guy", OwnerId = 1 };
+            var spell = new CardInstance { InstanceId = 9002, DefinitionId = "test_spell", OwnerId = 1 };
+            p1.cardsInHand.Add(guy);
+            p1.cardsInHand.Add(spell);
+
+            Submit(state, new EndPhaseCommand(0));   // slot 0 (P0 main) -> slot 1 (P1 main)
+            Submit(state, new EndPhaseCommand(1));   // slot 1 -> slot 2 (P1's bonus slot)
+            Assert.AreEqual(1, state.ActivePlayerId);
+            Assert.IsFalse(state.IsMainActionSlot, "slot 2 is P1's second slot this stretch");
+
+            var guyEvents = Submit(state, new PlayCardCommand(1, guy.InstanceId, LaneIndex: 0));
+            AssertRejected(guyEvents);
+            Assert.IsTrue(p1.cardsInHand.Contains(guy), "guy stays in hand: bonus slots are spell-only");
+
+            var spellEvents = Submit(state, new PlayCardCommand(1, spell.InstanceId, LaneIndex: 0));
+            AssertNoRejections(spellEvents);
+            Assert.IsFalse(p1.cardsInHand.Contains(spell), "spells are playable on a bonus slot");
+        }
+
         // ---------- EndPhase ----------
 
         [Test]
@@ -255,15 +299,15 @@ namespace Game.Core.Tests
         }
 
         [Test]
-        public void EndPhase_EachTurnStartDrawsOneForTheActivePlayer()
+        public void EndPhase_MidBlockAdvance_DrawsNothing()
         {
             var state = NewGame();
             int p1Before = state.Players[1].cardsInHand.Count;
 
             var events = Submit(state, new EndPhaseCommand(0)); // -> slot 1, P1's turn begins
 
-            Assert.AreEqual(1, events.OfType<CardDrawnEvent>().Count(), "exactly one draw per turn start");
-            Assert.AreEqual(p1Before + 1, state.Players[1].cardsInHand.Count, "the new active player drew it");
+            Assert.AreEqual(0, events.OfType<CardDrawnEvent>().Count(), "draw only happens at block boundaries, not per turn");
+            Assert.AreEqual(p1Before, state.Players[1].cardsInHand.Count, "hand unchanged mid-block");
         }
 
         [Test]
@@ -282,16 +326,15 @@ namespace Game.Core.Tests
 
             AssertNoRejections(events);
 
-            // energy block: cap grew 1 -> 2 and refilled. Draws are per-turn, not
-            // per-block: only P1 draws here, because settling past combat starts
-            // P1's turn (slot 5). P0's hand must not change.
+            // energy block: cap grew 1 -> 2 and refilled. Both players draw
+            // together at the block boundary, regardless of whose turn is next.
             foreach (var p in state.Players)
             {
                 Assert.AreEqual(2, p.EnergyPerTurn, $"P{p.Id} cap grew");
                 Assert.AreEqual(2, p.CurrentEnergy, $"P{p.Id} refilled");
             }
-            Assert.AreEqual(p0Hand, state.Players[0].cardsInHand.Count, "P0 does not draw at the block");
-            Assert.AreEqual(p1Hand + 1, state.Players[1].cardsInHand.Count, "P1 drew for their new turn");
+            Assert.AreEqual(p0Hand + 1, state.Players[0].cardsInHand.Count, "P0 drew at the block");
+            Assert.AreEqual(p1Hand + 1, state.Players[1].cardsInHand.Count, "P1 drew at the block");
 
             // settled past combat onto the next action slot (slot 5, P1 first this half)
             Assert.AreEqual(SlotType.Action, state.CurrentSlotType);
@@ -353,7 +396,7 @@ namespace Game.Core.Tests
 
             AssertNoRejections(events);
             Assert.AreEqual(0, events.OfType<CardDrawnEvent>().Count(), "no draws from empty decks");
-            Assert.AreEqual(5, state.Players[0].cardsInHand.Count, "hand unchanged (4 dealt + first turn draw)");
+            Assert.AreEqual(4, state.Players[0].cardsInHand.Count, "hand unchanged (dealt only)");
         }
     }
 }

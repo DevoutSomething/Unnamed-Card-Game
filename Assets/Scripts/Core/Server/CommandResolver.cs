@@ -12,7 +12,7 @@ namespace Game.Core.Server
         private const int StartingHandSize = 4;
         private const int StartingEnergyCap = 1;
         private const int EnergyCapGrowthPerBlock = 1;
-        private const int CardsDrawnPerTurn = 1;
+        private const int CardsDrawnPerBlock = 1;
         private const int DeckSize = 10;
 
 
@@ -127,6 +127,12 @@ namespace Game.Core.Server
                 return;
             }
 
+            if (!state.IsMainActionSlot && IsGuyCard(card))
+            {
+                events.Add(new CommandRejectedEvent(cmd, "guys can only be played on your first action slot each cycle — this is a bonus, spell-only slot"));
+                return;
+            }
+
             if (card.CurrentCost > player.CurrentEnergy)
             {
                 events.Add(new CommandRejectedEvent(cmd, $"not enough energy (have {player.CurrentEnergy}, need {card.CurrentCost})"));
@@ -206,7 +212,7 @@ namespace Game.Core.Server
                     break;
 
                 case SlotType.Action:
-                    // A new turn begins: settle here, draw, fire turn keywords.
+                    // A new turn begins: settle here, fire turn keywords.
                     ApplyStartOfTurn(state, events);
                     break;
             }
@@ -214,10 +220,10 @@ namespace Game.Core.Server
 
         /// <summary>
         /// Everything that happens when a player's action slot begins (each
-        /// action slot in the rotation counts as one turn): the turn draw, then
-        /// the board's StartOfTurn keywords — regen (guy heals itself),
-        /// heroregen (heals its owner), goldgen (owner gains gold) and
-        /// goldsteal (taken from the opponent).
+        /// action slot in the rotation counts as one turn): the board's
+        /// StartOfTurn keywords — regen (guy heals itself), heroregen (heals
+        /// its owner), goldgen (owner gains gold) and goldsteal (taken from the
+        /// opponent). Card draw is NOT here — see StartNewEnergyBlock.
         /// </summary>
         private static void ApplyStartOfTurn(GameState state, List<GameEvent> events)
         {
@@ -225,11 +231,6 @@ namespace Game.Core.Server
 
             var player = state.Players[state.ActivePlayerId];
             var opponent = state.Players[1 - player.Id];
-
-            for (int i = 0; i < CardsDrawnPerTurn; i++)
-            {
-                DrawCard(state, player, events);
-            }
 
             foreach (var lane in state.Lanes)
             {
@@ -269,9 +270,9 @@ namespace Game.Core.Server
         }
 
         /// <summary>
-        /// Combat ends a block: energy caps grow and refill. Card draw is NOT
-        /// tied to blocks — players draw at the start of each of their turns
-        /// (ApplyStartOfTurn), per the "draw one per turn" design.
+        /// Combat ends a block: both players draw together here (not per-turn —
+        /// this is the only place cards are drawn during a match, aside from
+        /// the opening deal) and energy caps grow and refill.
         /// </summary>
         private static void StartNewEnergyBlock(GameState state, List<GameEvent> events)
         {
@@ -280,7 +281,27 @@ namespace Game.Core.Server
                 player.EnergyPerTurn += EnergyCapGrowthPerBlock;
                 player.CurrentEnergy = player.EnergyPerTurn;
                 events.Add(new EnergyChangedEvent(player.Id, player.CurrentEnergy, player.EnergyPerTurn));
+
+                for (int i = 0; i < CardsDrawnPerBlock; i++)
+                {
+                    DrawCard(state, player, events);
+                }
             }
+        }
+
+        /// <summary>
+        /// Guy cards are only playable on a player's main action slot each
+        /// cycle (their other slots are spell-only) — see Rotation.IsMainActionSlot.
+        /// Determined by the card's CardDefinition, looked up by DefinitionId;
+        /// an unconfigured catalog (headless logic tests) treats every card as
+        /// a guy, matching the vanilla test deck's guy-shaped stat lines.
+        /// </summary>
+        private static bool IsGuyCard(CardInstance card)
+        {
+            foreach (var def in CardCatalogRuntime.Pool)
+                if (def.CardId == card.DefinitionId)
+                    return def is GuyCardDefinition;
+            return true;
         }
 
         private static void DrawCard(GameState state, Player player, List<GameEvent> events)

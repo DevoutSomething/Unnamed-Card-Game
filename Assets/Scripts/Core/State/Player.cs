@@ -29,9 +29,9 @@ namespace Game.Core.State {
 
         public Player(int id) {
             Id = id;
-            Health = 100;
-            MaxHealth = 100;
-            Gold = 0;
+            MaxHealth = 30;
+            Health = MaxHealth;
+            Gold = 50;
         }
 
         public List<Archetype> Archetypes = new List<Archetype>();

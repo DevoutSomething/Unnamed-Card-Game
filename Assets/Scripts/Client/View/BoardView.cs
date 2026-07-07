@@ -24,7 +24,6 @@ namespace Game.Client.View
         static readonly Color PanelColor = new Color(0f, 0f, 0f, 0.35f);
         static readonly Color SlotColor = new Color(1f, 1f, 1f, 0.06f);
         static readonly Color ActiveColor = new Color(1f, 0.85f, 0.3f);
-        static readonly Color SelectedColor = new Color(1f, 0.85f, 0.3f, 0.9f);
 
         GameController _controller;
         CardDatabase _db;
@@ -136,14 +135,12 @@ namespace Game.Client.View
 
             for (int lane = 0; lane < laneCount; lane++)
             {
-                var col = new GameObject($"Lane{lane}", typeof(RectTransform), typeof(Image), typeof(Button));
+                var col = new GameObject($"Lane{lane}", typeof(RectTransform), typeof(Image), typeof(LaneDropTarget));
                 var colRect = (RectTransform)col.transform;
                 colRect.SetParent(lanesRoot, false);
                 colRect.sizeDelta = new Vector2(colW, colH);
                 col.GetComponent<Image>().color = PanelColor;
-
-                int laneIndex = lane;   // capture for the closure
-                col.GetComponent<Button>().onClick.AddListener(() => _controller.ClickLane(laneIndex));
+                col.GetComponent<LaneDropTarget>().LaneIndex = lane;
 
                 var stack = col.AddComponent<VerticalLayoutGroup>();
                 stack.padding = new RectOffset(0, 0, 6, 6);
@@ -175,7 +172,7 @@ namespace Game.Client.View
             slot.sizeDelta = new Vector2(w, h);
             var img = slot.gameObject.AddComponent<Image>();
             img.color = SlotColor;
-            img.raycastTarget = false;   // clicks fall through to the lane button
+            img.raycastTarget = false;   // drag raycasts fall through to the lane's Image/LaneDropTarget
             var le = slot.gameObject.AddComponent<LayoutElement>();
             le.preferredWidth = w;
             le.preferredHeight = h;
@@ -245,7 +242,7 @@ namespace Game.Client.View
         // Redraw (every event batch)
         // ------------------------------------------------------------------
 
-        public void Redraw(GameState state, CardInstance selectedCard)
+        public void Redraw(GameState state)
         {
             for (int lane = 0; lane < state.Lanes.Length; lane++)
             {
@@ -253,7 +250,7 @@ namespace Game.Client.View
                 RedrawSublane(state.Lanes[lane].P2, lane);
             }
 
-            RedrawHand(state, selectedCard);
+            RedrawHand(state);
             RedrawLabels(state);
             RedrawGameOver(state);
         }
@@ -274,7 +271,7 @@ namespace Game.Client.View
             }
         }
 
-        void RedrawHand(GameState state, CardInstance selectedCard)
+        void RedrawHand(GameState state)
         {
             ClearChildren(_handRoot);
             var player = state.Players[state.ActivePlayerId];
@@ -282,7 +279,7 @@ namespace Game.Client.View
             foreach (var card in player.cardsInHand)
             {
                 var wrapper = new GameObject("HandCard",
-                    typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
+                    typeof(RectTransform), typeof(Image), typeof(DraggableHandCard), typeof(LayoutElement));
                 var rect = (RectTransform)wrapper.transform;
                 rect.SetParent(_handRoot, false);
                 float w = CardW * HandScale + 8, h = CardH * HandScale + 8;
@@ -291,12 +288,11 @@ namespace Game.Client.View
                 le.preferredWidth = w;
                 le.preferredHeight = h;
 
-                // The wrapper doubles as the selection frame.
-                wrapper.GetComponent<Image>().color =
-                    card == selectedCard ? SelectedColor : new Color(0, 0, 0, 0.25f);
+                wrapper.GetComponent<Image>().color = new Color(0, 0, 0, 0.25f);
 
-                var captured = card;
-                wrapper.GetComponent<Button>().onClick.AddListener(() => _controller.SelectCard(captured));
+                var drag = wrapper.GetComponent<DraggableHandCard>();
+                drag.Card = card;
+                drag.Controller = _controller;
 
                 var view = CardViewFactory.Spawn(card, rect, _db, _skins);
                 if (view != null) PlaceCardView(view, HandScale);

@@ -43,12 +43,6 @@ namespace Game.Client
         private CardDatabase _db;
         private CardSkinLibrary _skins;
 
-        /// <summary>
-        /// The card the active player has clicked in their hand and not yet
-        /// placed. Purely a UI concept, which is why it lives here and not in Core.
-        /// </summary>
-        private CardInstance _selectedCard;
-
         private int ActivePlayer => _server.State.ActivePlayerId;
 
         private void Start()
@@ -73,42 +67,25 @@ namespace Game.Client
 
         private void StartMatch()
         {
-            _selectedCard = null;
             int matchSeed = seed != 0 ? seed : new System.Random().Next(1, int.MaxValue);
             Debug.Log($"starting match with seed {matchSeed}");
             _server.StartNewGame(matchSeed);    // -> StartGame batch -> HandleEvents -> Redraw
         }
 
         // ---------------------------------------------------------------
-        // INPUT (wired to BoardView's buttons; keyboard fallback below)
+        // INPUT (wired to BoardView's drag handlers; keyboard fallback below)
         // ---------------------------------------------------------------
 
-        /// <summary>Hand card clicked: select it (click again to deselect).</summary>
-        public void SelectCard(CardInstance card)
-        {
-            _selectedCard = _selectedCard == card ? null : card;
-            _board.ShowMessage(_selectedCard != null
-                ? $"Click a lane to play it (cost {_selectedCard.CurrentCost})."
-                : "");
-            Redraw();
-        }
-
-        /// <summary>Lane clicked. Sends the play command if a card is selected.</summary>
-        public void ClickLane(int laneIndex)
+        /// <summary>Hand card dropped on a lane: sends the play command.</summary>
+        public void PlayCard(CardInstance card, int laneIndex)
         {
             if (_server.State.IsGameOver) return;
-            if (_selectedCard == null)
-            {
-                _board.ShowMessage("Select a card from your hand first.");
-                return;
-            }
 
             _server.Submit(new PlayCardCommand(
                 ActivePlayer,
-                _selectedCard.InstanceId,
+                card.InstanceId,
                 laneIndex));            // SlotIndex omitted -> -1 -> auto-place
 
-            _selectedCard = null;       // clear regardless; a rejection just shows
             Redraw();
         }
 
@@ -116,7 +93,6 @@ namespace Game.Client
         public void EndPhase()
         {
             if (_server.State.IsGameOver) return;
-            _selectedCard = null;
             _board.ShowMessage("");
             _server.Submit(new EndPhaseCommand(ActivePlayer));
         }
@@ -151,11 +127,7 @@ namespace Game.Client
             {
                 var player = _server.State.Players[ActivePlayer];
                 var card = player.cardsInHand.Find(c => c.CurrentCost <= player.CurrentEnergy);
-                if (card != null)
-                {
-                    _selectedCard = card;
-                    ClickLane(0);
-                }
+                if (card != null) PlayCard(card, 0);
                 else Debug.Log("no affordable card in hand");
             }
         }
@@ -199,6 +171,6 @@ namespace Game.Client
             Redraw();
         }
 
-        private void Redraw() => _board.Redraw(_server.State, _selectedCard);
+        private void Redraw() => _board.Redraw(_server.State);
     }
 }

@@ -14,6 +14,10 @@ namespace Game.Core.State
         public SlotType CurrentSlotType => Rotation.Slots[SlotIndex].Type;
         public int ActivePlayerId => Rotation.Slots[SlotIndex].PlayerId;
 
+        /// <summary>True on the active player's first action slot in the current
+        /// stretch between system slots; false on their bonus (spell-only) slots.</summary>
+        public bool IsMainActionSlot => Rotation.IsMainActionSlot[SlotIndex];
+
         public bool IsGameOver =>
             Players[0].Health <= 0 || Players[1].Health <= 0;
 

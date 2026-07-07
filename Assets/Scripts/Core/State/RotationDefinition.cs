@@ -28,5 +28,36 @@ namespace Game.Core.State
         };
 
         public static int Length => Slots.Length;
+
+        /// <summary>
+        /// True for a player's first action slot in each stretch between system
+        /// slots (Combat/Event/...); false for that player's second (or later)
+        /// action slot in the same stretch. Guy cards are only playable on a
+        /// "main" slot — a player's other slots in the stretch are spell-only.
+        /// Derived once from the static rotation table, since it never changes
+        /// between cycles (indices repeat identically every RotationIndex).
+        /// </summary>
+        public static readonly bool[] IsMainActionSlot = ComputeMainActionSlots();
+
+        static bool[] ComputeMainActionSlots()
+        {
+            var result = new bool[Slots.Length];
+            var seenThisStretch = new bool[2];
+
+            for (int i = 0; i < Slots.Length; i++)
+            {
+                var slot = Slots[i];
+                if (slot.Type != SlotType.Action)
+                {
+                    seenThisStretch[0] = seenThisStretch[1] = false;
+                    continue;
+                }
+
+                result[i] = !seenThisStretch[slot.PlayerId];
+                seenThisStretch[slot.PlayerId] = true;
+            }
+
+            return result;
+        }
     }
 }

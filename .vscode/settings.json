@@ -67,6 +67,6 @@
         "*.sln": "*.csproj",
         "*.slnx": "*.csproj"
     },
-    "dotnet.defaultSolution": "Unnamed-Card-Game.slnx",
+    "dotnet.defaultSolution": "Unnamed Card Game.slnx",
     "dotnet.enableWorkspaceBasedDevelopment": false
 }
