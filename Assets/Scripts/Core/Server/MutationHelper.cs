@@ -21,14 +21,9 @@ namespace Game.Core.Server
         {
             int incomingDamage = attackingCard.CurrentAttack;
 
-            // Permanent armor (ability keyword, stacks by X) ...
+            // Armor: the defend keyword, stacks by X.
             incomingDamage -= AbilityRuntime.Sum(
                 damagedCard, AbilityTrigger.OnDamaged, AbilityEffect.ReduceDamage, AbilityTarget.Self);
-            // ... plus the temporary "Armored" status marker.
-            if (damagedCard.StatusEffects.Contains("Armored"))
-            {
-                incomingDamage -= 1;
-            }
             incomingDamage = Math.Max(0, incomingDamage);
 
             if (incomingDamage == 0)
@@ -71,6 +66,11 @@ namespace Game.Core.Server
             List<GameEvent> events)
         {
             if (amount <= 0) return;
+
+            // A corpse's death attribution is frozen: a card killed in the
+            // simultaneous swing still counterattacks, and the thorns it takes
+            // back must not overwrite who combat-killed it (kill gold + bounty).
+            if (target.CurrentHealth <= 0) return;
 
             target.CurrentHealth = Math.Max(0, target.CurrentHealth - amount);
             target.LastDamageWasCombatDamage = false;

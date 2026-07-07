@@ -133,17 +133,13 @@ namespace Game.Core.Server
                 return;
             }
 
-            if (cmd.LaneIndex < 0 || cmd.LaneIndex >= state.Lanes.Length)
+            // CardZones owns placement (lane bounds, slot resolution, the
+            // CardPlayedEvent). Buffer its events so the energy payment is
+            // still emitted before CardPlayed.
+            var placement = new List<GameEvent>();
+            if (!CardZones.TryPlaceInLane(state, card, cmd.LaneIndex, cmd.SlotIndex, placement, out string error))
             {
-                events.Add(new CommandRejectedEvent(cmd, "invalid lane"));
-                return;
-            }
-
-            var sublane = state.Lanes[cmd.LaneIndex].SublaneOf(cmd.PlayerId);
-            int slot = sublane.ResolveSlot(cmd.SlotIndex);
-            if (slot < 0)
-            {
-                events.Add(new CommandRejectedEvent(cmd, "no available slot in that lane"));
+                events.Add(new CommandRejectedEvent(cmd, error));
                 return;
             }
 
@@ -151,8 +147,7 @@ namespace Game.Core.Server
             events.Add(new EnergyChangedEvent(player.Id, player.CurrentEnergy, player.EnergyPerTurn));
 
             player.cardsInHand.Remove(card);
-            sublane.Place(card, slot);
-            events.Add(new CardPlayedEvent(cmd.PlayerId, card.InstanceId, cmd.LaneIndex, slot));
+            events.AddRange(placement);
 
             // OnPlay abilities. Only card draw exists so far (Initiate).
             int draws = AbilityRuntime.Sum(

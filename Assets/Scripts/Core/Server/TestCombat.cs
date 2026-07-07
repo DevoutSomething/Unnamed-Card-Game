@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEditor;
 #endif
 using Game.Cards;
+using Game.Core.Abilities;
 using Game.Core.Events;
 using Game.Core.State;
 
@@ -83,6 +84,11 @@ namespace Game.Core.Server
         public static void RunAll()
         {
             _passed = 0; _failed = 0;
+
+            // The armor tests use the real "defend" keyword, so the vocabulary
+            // must be loaded (same bootstrap as the NUnit suites).
+            AbilityRuntime.Configure(AbilityLoader.Parse(
+                System.IO.File.ReadAllText("Assets/GameData/abilities.json")));
 
             Debug.Log("===== SECTION 1: Mutation helper tests =====");
             Test_DealCombatDamage_ReducesHealth();
@@ -173,7 +179,7 @@ namespace Game.Core.Server
             BeginTest(nameof(Test_DealCombatDamage_ArmorReducesByOne));
             var attacker = MakeGuy(1, 0, attack: 3, health: 5);
             var target = MakeGuy(2, 1, attack: 2, health: 5);
-            target.StatusEffects.Add("Armored");
+            target.Abilities.Add(new AbilityRef { Id = "defend", X = 1 });
 
             var events = new List<GameEvent>();
             MutationHelper.DealCombatDamage(target, attacker, events);
@@ -186,7 +192,7 @@ namespace Game.Core.Server
             BeginTest(nameof(Test_DealCombatDamage_ArmorDoesNotMakeDamageNegative));
             var attacker = MakeGuy(1, 0, attack: 1, health: 5);  // 1 attack vs armor = 0 effective
             var target = MakeGuy(2, 1, attack: 2, health: 5);
-            target.StatusEffects.Add("Armored");
+            target.Abilities.Add(new AbilityRef { Id = "defend", X = 1 });
 
             var events = new List<GameEvent>();
             MutationHelper.DealCombatDamage(target, attacker, events);
@@ -553,7 +559,7 @@ namespace Game.Core.Server
             var state = MakeTestState();
             PlaceGuy(state, 0, 0, 0, attack: 3, health: 10);
             var target = PlaceGuy(state, 1, 0, 0, attack: 0, health: 10);
-            target.StatusEffects.Add("Armored");
+            target.Abilities.Add(new AbilityRef { Id = "defend", X = 1 });
 
             var events = new List<GameEvent>();
             CombatResolver.Resolve(state, events);

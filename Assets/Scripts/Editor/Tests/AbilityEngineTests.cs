@@ -339,6 +339,22 @@ namespace Game.Core.Tests
             Assert.AreEqual(3, state.Players[1].Gold, "same trade, same gold — no seat advantage");
         }
 
+        [Test]
+        public void Thorns_PostMortemRetaliationDoesNotEraseKillCredit()
+        {
+            var state = new GameState(seed: 1);
+            // Killer swings first and combat-kills the victim; the victim's dead
+            // counterswing then takes thorns back — that post-mortem direct hit
+            // must not overwrite who combat-killed it.
+            PlaceGuy(state, 0, 0, 0, attack: 5, health: 10,
+                     abilities: new[] { ("thorns", 1), ("bounty", 2) });
+            PlaceGuy(state, 1, 0, 0, attack: 2, health: 3, killGold: 4);
+
+            RunCombat(state);
+
+            Assert.AreEqual(6, state.Players[0].Gold, "kill gold (4) + bounty (2) survive the corpse's thorns hit");
+        }
+
         // ---------- hero damage ----------
 
         [Test]
