@@ -4,17 +4,22 @@
     "displayName": "Knight",
     "energyCost": 1,
     "goldCost": 0,
-    "description": "Armored 1. Hes a Guy.",
+    "description": "Defend 1. Hes a Guy.",
     "rarity": "Common",
     "archetypes": [
         "Tank",
         "Colorless"
     ],
-    "tags": [],
+    "tags": [
+        "tank"
+    ],
     "baseAttack": 1,
     "baseHealth": 2,
     "abilities": [
-        { "id": "armored", "x": 1 }
+        {
+            "id": "defend",
+            "x": 1
+        }
     ],
     "killRewardGold": 10
 }

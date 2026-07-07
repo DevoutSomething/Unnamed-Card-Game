@@ -141,11 +141,21 @@ namespace Game.Cards {
         }
 
         CardBorder DefaultBorderFor(CardDefinition card) {
-            foreach (var b in _borders)
-                if (b != null && b.Unlock == UnlockSource.Rarity && b.RarityForDefault == card.Rarity
-                    && b.IsCompatibleWith(card))
-                    return b;
-            return null;
+            // Most-specific wins: a border that *requires* card tags (e.g. the
+            // "tank" archetype frame) beats the generic rarity frame for cards
+            // that carry those tags; untagged cards still get the generic one.
+            CardBorder best = null;
+            int bestSpecificity = -1;
+            foreach (var b in _borders) {
+                if (b == null || b.Unlock != UnlockSource.Rarity || b.RarityForDefault != card.Rarity) continue;
+                if (!b.IsCompatibleWith(card)) continue;
+                int specificity = b.RequiredCardTags?.Count ?? 0;
+                if (specificity > bestSpecificity) {
+                    best = b;
+                    bestSpecificity = specificity;
+                }
+            }
+            return best;
         }
 
         static T FindById<T>(List<T> list, System.Func<T, string> idOf, string id) where T : Object {

@@ -1,0 +1,25 @@
+{
+    "cardId": "brawler_01",
+    "type": "guy",
+    "displayName": "Brawler",
+    "energyCost": 2,
+    "goldCost": 0,
+    "description": "Overkill.",
+    "rarity": "Common",
+    "archetypes": [
+        "Bruiser",
+        "Colorless"
+    ],
+    "tags": [
+        "bruiser"
+    ],
+    "baseAttack": 3,
+    "baseHealth": 2,
+    "abilities": [
+        {
+            "id": "overkill",
+            "x": 1
+        }
+    ],
+    "killRewardGold": 0
+}

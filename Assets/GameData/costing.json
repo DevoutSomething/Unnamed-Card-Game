@@ -1,5 +1,6 @@
 {
     "statWeights": { "attack": 1.0, "health": 1.0 },
-    "budget": { "base": 1.5, "perEnergy": 2.5 },
-    "tolerancePoints": 1.0
+    "budget": { "base": 2.25, "perEnergy": 1.25 },
+    "rarityBonus": { "Common": 0.0, "Rare": 0.5, "Epic": 1.5, "Legendary": 3.0 },
+    "tolerancePoints": 1.25
 }

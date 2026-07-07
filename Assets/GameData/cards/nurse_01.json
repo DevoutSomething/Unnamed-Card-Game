@@ -1,0 +1,25 @@
+{
+    "cardId": "nurse_01",
+    "type": "guy",
+    "displayName": "Nurse",
+    "energyCost": 1,
+    "goldCost": 0,
+    "description": "Heal 2.",
+    "rarity": "Common",
+    "archetypes": [
+        "Healer",
+        "Colorless"
+    ],
+    "tags": [
+        "healer"
+    ],
+    "baseAttack": 1,
+    "baseHealth": 2,
+    "abilities": [
+        {
+            "id": "heal",
+            "x": 2
+        }
+    ],
+    "killRewardGold": 0
+}

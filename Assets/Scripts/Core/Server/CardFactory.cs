@@ -43,6 +43,7 @@ namespace Game.Core.Server
                 CurrentCost = def.EnergyCost,
                 CurrentAttack = guy?.BaseAttack ?? 0,
                 CurrentHealth = guy?.BaseHealth ?? 0,
+                MaxHealth = guy?.BaseHealth ?? 0,
                 KillRewardGold = guy?.KillRewardGold ?? 0,
             };
 

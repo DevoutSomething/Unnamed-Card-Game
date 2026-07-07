@@ -1,0 +1,25 @@
+{
+    "cardId": "apprentice_01",
+    "type": "guy",
+    "displayName": "Apprentice",
+    "energyCost": 1,
+    "goldCost": 0,
+    "description": "Guy Damage 1.",
+    "rarity": "Common",
+    "archetypes": [
+        "Mage",
+        "Colorless"
+    ],
+    "tags": [
+        "mage"
+    ],
+    "baseAttack": 2,
+    "baseHealth": 1,
+    "abilities": [
+        {
+            "id": "guydamage",
+            "x": 1
+        }
+    ],
+    "killRewardGold": 0
+}

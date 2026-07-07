@@ -1,14 +1,20 @@
+using System;
 using System.Collections.Generic;
 using Game.Core.Abilities;
 using Game.Core.Events;
 using Game.Core.State;
-using Unity.Mathematics;
 
 namespace Game.Core.Server
 {
     public static class MutationHelper
     {
-        public static void DealCombatDamage(
+        /// <summary>
+        /// An attacker hits a card. Applies defend/armor reduction and thorns
+        /// retaliation. Returns the overkill overflow — damage beyond what the
+        /// target's remaining health absorbed (0 unless the hit was lethal);
+        /// the caller decides what to do with it.
+        /// </summary>
+        public static int DealCombatDamage(
             CardInstance damagedCard,
             CardInstance attackingCard,
             List<GameEvent> events)
@@ -23,21 +29,17 @@ namespace Game.Core.Server
             {
                 incomingDamage -= 1;
             }
-            incomingDamage = math.max(0, incomingDamage);
+            incomingDamage = Math.Max(0, incomingDamage);
 
             if (incomingDamage == 0)
             {
-                return;
+                return 0;
             }
 
-            damagedCard.CurrentHealth -= incomingDamage;
+            int healthBefore = damagedCard.CurrentHealth;
+            damagedCard.CurrentHealth = Math.Max(0, healthBefore - incomingDamage);
             damagedCard.LastDamageWasCombatDamage = true;
             damagedCard.LastDamagerCardId = attackingCard.InstanceId;
-
-            if (damagedCard.CurrentHealth < 0)
-            {
-                damagedCard.CurrentHealth = 0;
-            }
 
             events.Add(new CardDamagedEvent(
                 damagedCard.InstanceId,
@@ -53,6 +55,8 @@ namespace Game.Core.Server
             {
                 DealDirectDamage(attackingCard, thorns, damagedCard.InstanceId, events);
             }
+
+            return Math.Max(0, incomingDamage - healthBefore);
         }
 
         /// <summary>
@@ -68,14 +72,81 @@ namespace Game.Core.Server
         {
             if (amount <= 0) return;
 
-            target.CurrentHealth = math.max(0, target.CurrentHealth - amount);
+            target.CurrentHealth = Math.Max(0, target.CurrentHealth - amount);
             target.LastDamageWasCombatDamage = false;
             target.LastDamagerCardId = sourceInstanceId;
 
             events.Add(new CardDamagedEvent(target.InstanceId, amount, target.CurrentHealth));
         }
 
-       public static void DealCombatDamageToPlayer(
+        /// <summary>
+        /// Restore health, capped at MaxHealth. Emits CardHealedEvent only when
+        /// health actually changes, then fires the card's OnHealed abilities
+        /// (mending). Returns the amount actually healed.
+        /// </summary>
+        public static int HealCard(CardInstance card, int amount, List<GameEvent> events)
+        {
+            if (card == null || amount <= 0) return 0;
+
+            int healed = Math.Min(amount, card.MaxHealth - card.CurrentHealth);
+            if (healed <= 0) return 0;
+
+            card.CurrentHealth += healed;
+            events.Add(new CardHealedEvent(card.InstanceId, healed, card.CurrentHealth));
+
+            int mend = AbilityRuntime.Sum(
+                card, AbilityTrigger.OnHealed, AbilityEffect.BuffStats, AbilityTarget.Self);
+            if (mend > 0)
+            {
+                BuffStats(card, mend, events);
+            }
+
+            return healed;
+        }
+
+        /// <summary>
+        /// Permanent +X/+X. Raises MaxHealth alongside CurrentHealth so the buff
+        /// also grows the healable room.
+        /// </summary>
+        public static void BuffStats(CardInstance card, int amount, List<GameEvent> events)
+        {
+            if (card == null || amount <= 0) return;
+
+            card.CurrentAttack += amount;
+            card.MaxHealth += amount;
+            card.CurrentHealth += amount;
+
+            events.Add(new CardBuffedEvent(card.InstanceId, amount, amount));
+        }
+
+        /// <summary>Move gold from victim to thief, capped by what the victim has.</summary>
+        public static void StealGold(Player thief, Player victim, int amount, List<GameEvent> events)
+        {
+            if (amount <= 0) return;
+
+            int stolen = Math.Min(amount, victim.Gold);
+            if (stolen <= 0) return;
+
+            victim.Gold -= stolen;
+            thief.Gold += stolen;
+
+            events.Add(new GoldLostEvent(victim.Id, stolen));
+            events.Add(new GoldGainedEvent(thief.Id, stolen));
+        }
+
+        /// <summary>Restore player health, capped at MaxHealth. Emits only on change.</summary>
+        public static void HealPlayer(Player target, int amount, List<GameEvent> events)
+        {
+            if (amount <= 0) return;
+
+            int healed = Math.Min(amount, target.MaxHealth - target.Health);
+            if (healed <= 0) return;
+
+            target.Health += healed;
+            events.Add(new PlayerHealedEvent(target.Id, healed, target.Health));
+        }
+
+        public static void DealCombatDamageToPlayer(
             Player target,
             int amount,
             List<GameEvent> events)
@@ -90,14 +161,14 @@ namespace Game.Core.Server
 
             events.Add(new PlayerDamagedEvent(target.Id, amount, target.Health));
         }
+
         public static void GiveGold(Player player, int amount, List<GameEvent> events)
         {
             if (amount <= 0) return;
 
             player.Gold += amount;
 
-            events.Add(new GoldGainedEvent(amount, player.Id));
+            events.Add(new GoldGainedEvent(player.Id, amount));
         }
-
-}
     }
+}

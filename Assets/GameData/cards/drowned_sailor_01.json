@@ -1,0 +1,21 @@
+{
+    "cardId": "drowned_sailor_01",
+    "type": "guy",
+    "displayName": "Drowned Sailor",
+    "energyCost": 3,
+    "goldCost": 0,
+    "description": "Aquatic.",
+    "rarity": "Rare",
+    "archetypes": [
+        "Tank",
+        "Colorless"
+    ],
+    "tags": [
+        "tank",
+        "aquatic"
+    ],
+    "baseAttack": 1,
+    "baseHealth": 4,
+    "abilities": [],
+    "killRewardGold": 0
+}

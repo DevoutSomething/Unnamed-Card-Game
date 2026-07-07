@@ -1,0 +1,20 @@
+{
+    "cardId": "pugilist_01",
+    "type": "guy",
+    "displayName": "Pugilist",
+    "energyCost": 1,
+    "goldCost": 0,
+    "description": "",
+    "rarity": "Common",
+    "archetypes": [
+        "Bruiser",
+        "Colorless"
+    ],
+    "tags": [
+        "bruiser"
+    ],
+    "baseAttack": 2,
+    "baseHealth": 2,
+    "abilities": [],
+    "killRewardGold": 0
+}

@@ -1,0 +1,21 @@
+{
+    "cardId": "kraken_01",
+    "type": "guy",
+    "displayName": "Kraken",
+    "energyCost": 5,
+    "goldCost": 0,
+    "description": "Aquatic.",
+    "rarity": "Epic",
+    "archetypes": [
+        "Bruiser",
+        "Colorless"
+    ],
+    "tags": [
+        "bruiser",
+        "aquatic"
+    ],
+    "baseAttack": 5,
+    "baseHealth": 6,
+    "abilities": [],
+    "killRewardGold": 0
+}

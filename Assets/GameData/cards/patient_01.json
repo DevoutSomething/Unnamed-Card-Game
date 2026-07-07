@@ -1,0 +1,25 @@
+{
+    "cardId": "patient_01",
+    "type": "guy",
+    "displayName": "Patient",
+    "energyCost": 3,
+    "goldCost": 0,
+    "description": "When you heal this, it gains +1/+1.",
+    "rarity": "Common",
+    "archetypes": [
+        "Healer",
+        "Colorless"
+    ],
+    "tags": [
+        "healer"
+    ],
+    "baseAttack": 2,
+    "baseHealth": 2,
+    "abilities": [
+        {
+            "id": "mending",
+            "x": 1
+        }
+    ],
+    "killRewardGold": 0
+}

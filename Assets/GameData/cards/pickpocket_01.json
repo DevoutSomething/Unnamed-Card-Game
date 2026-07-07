@@ -1,0 +1,25 @@
+{
+    "cardId": "pickpocket_01",
+    "type": "guy",
+    "displayName": "Pickpocket",
+    "energyCost": 2,
+    "goldCost": 0,
+    "description": "Rob 3.",
+    "rarity": "Common",
+    "archetypes": [
+        "Assassin",
+        "Colorless"
+    ],
+    "tags": [
+        "assassin"
+    ],
+    "baseAttack": 3,
+    "baseHealth": 1,
+    "abilities": [
+        {
+            "id": "rob",
+            "x": 3
+        }
+    ],
+    "killRewardGold": 0
+}

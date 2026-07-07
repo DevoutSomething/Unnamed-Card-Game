@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Game.Core.Abilities;
 using UnityEngine;
 
 namespace Game.Cards {
@@ -8,6 +7,11 @@ namespace Game.Cards {
     /// Base data shared by every card, authored as a ScriptableObject asset.
     /// This type is abstract: you never create a plain "card", only a concrete
     /// card type (Guy, Spell, ...). Add new card types by extending this class.
+    ///
+    /// NOTE: every concrete ScriptableObject class must live in a .cs file named
+    /// exactly after the class (GuyCardDefinition.cs, ...). Unity binds saved
+    /// .asset files to scripts by file name — a class hiding in a shared file
+    /// deserializes as "Missing (Mono Script)" in the next session.
     /// </summary>
     public abstract class CardDefinition : ScriptableObject {
 
@@ -18,7 +22,7 @@ namespace Game.Cards {
         [Header("Costs")]
         public int EnergyCost;   // cost to play the card during a match
         public int GoldCost;     // cost to buy the card in the shop
-        
+
         [Header("Info")]
         [TextArea] public string Description;
         public Rarity Rarity;
@@ -30,31 +34,6 @@ namespace Game.Cards {
         public List<string> Tags = new();
 
         public bool HasTag(string tag) => Tags != null && Tags.Contains(tag);
-    }
-
-    /// <summary>
-    /// A creature ("guy") that occupies a lane slot and fights in combat.
-    /// </summary>
-    [CreateAssetMenu(menuName = "Cards/Guy Card")]
-    public class GuyCardDefinition : CardDefinition {
-
-        [Header("Guy Stats")]
-        public int BaseAttack;
-        public int BaseHealth;
-
-
-        [Tooltip("Ability keywords + magnitudes (defined in Assets/GameData/abilities.json).")]
-        public List<AbilityRef> Abilities = new();
-
-        [Tooltip("Gold awarded to the opponent when this guy is killed (seeds CardInstance.KillRewardGold).")]
-        public int KillRewardGold;
-    }
-
-    /// <summary>
-    /// A one-shot spell. Spell-specific fields go here as the design grows.
-    /// </summary>
-    [CreateAssetMenu(menuName = "Cards/Spell Card")]
-    public class SpellCardDefinition : CardDefinition {
     }
 
     public enum Rarity {

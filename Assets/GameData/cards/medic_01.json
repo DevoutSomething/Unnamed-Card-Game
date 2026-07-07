@@ -1,0 +1,25 @@
+{
+    "cardId": "medic_01",
+    "type": "guy",
+    "displayName": "Medic",
+    "energyCost": 2,
+    "goldCost": 0,
+    "description": "Pierce.",
+    "rarity": "Common",
+    "archetypes": [
+        "Healer",
+        "Colorless"
+    ],
+    "tags": [
+        "healer"
+    ],
+    "baseAttack": 2,
+    "baseHealth": 1,
+    "abilities": [
+        {
+            "id": "pierce",
+            "x": 1
+        }
+    ],
+    "killRewardGold": 0
+}

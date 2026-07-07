@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6ab3ec2384fc3cc48bf12111d8356500, type: 3}
+  m_Name: sneaky_little_guy_01
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Cards.GuyCardDefinition
+  CardId: sneaky_little_guy_01
+  DisplayName: Sneaky Little Guy
+  EnergyCost: 3
+  GoldCost: 0
+  Description: Precision. Rob 10.
+  Rarity: 2
+  Archetypes: 00000000
+  Tags:
+  - classless
+  BaseAttack: 3
+  BaseHealth: 2
+  Abilities:
+  - Id: precision
+    X: 1
+  - Id: rob
+    X: 10
+  KillRewardGold: 0

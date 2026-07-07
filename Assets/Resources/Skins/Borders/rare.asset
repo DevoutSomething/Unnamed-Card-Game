@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b16847d06d9e2114e971587779336f7b, type: 3}
+  m_Name: rare
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Cards.CardBorder
+  BorderId: rare
+  Frame: {fileID: 21300000, guid: 89949d6c58d6b494e8259c2e718042ca, type: 3}
+  Unlock: 1
+  RarityForDefault: 1
+  RequiredArtTags: []
+  RequiredCardTags: []

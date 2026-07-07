@@ -12,14 +12,16 @@ namespace Game.Core.State {
         // Which art skin this copy uses (CardArt.ArtId). Null/empty = default art.
         // Kept as a string so this layer stays free of UnityEngine types.
         public string ArtId;
-
-
         //current card stats
         public int KillRewardGold;
 
         public int CurrentAttack;
 
         public int CurrentHealth;
+
+        // Healing cap. Seeded from BaseHealth by CardFactory; permanent buffs
+        // (growth/mending) raise it alongside CurrentHealth.
+        public int MaxHealth;
 
         public int CurrentCost;
         public bool LastDamageWasCombatDamage;

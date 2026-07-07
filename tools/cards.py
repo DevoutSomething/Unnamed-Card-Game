@@ -319,18 +319,20 @@ def cmd_cost_check(args):
     """Power-budget check: card value (stats + abilities) vs. what its energy cost buys.
 
     value  = attack*w_a + health*w_h + sum(flatCost + costPerX * x per ability)
-    budget = base + perEnergy * energyCost
+    budget = base + perEnergy * energyCost + rarityBonus[rarity]
     Flags cards where |value - budget| > tolerance and suggests a cost.
     Weights live in costing.json; per-ability values live in abilities.json.
     """
     defaults = {"statWeights": {"attack": 1.0, "health": 1.0},
                 "budget": {"base": 1.5, "perEnergy": 2.5},
+                "rarityBonus": {r: 0.0 for r in RARITIES},
                 "tolerancePoints": 1.0}
     costing = defaults
     if COSTING_PATH.exists():
         with open(COSTING_PATH, encoding="utf-8") as f:
             costing = {**defaults, **json.load(f)}
     weights, budget = costing["statWeights"], costing["budget"]
+    rarity_bonus = costing["rarityBonus"]
     tol = costing["tolerancePoints"]
     ability_defs = load_ability_defs()
 
@@ -346,9 +348,10 @@ def cmd_cost_check(args):
         for a in card.get("abilities", []):
             adef = ability_defs.get(a.get("id"), {})
             value += adef.get("flatCost", 0) + adef.get("costPerX", 0) * a.get("x", 1)
-        target = budget["base"] + budget["perEnergy"] * card.get("energyCost", 0)
+        bonus = rarity_bonus.get(card.get("rarity", "Common"), 0.0)
+        target = budget["base"] + budget["perEnergy"] * card.get("energyCost", 0) + bonus
         delta = value - target
-        suggested = max(0, round((value - budget["base"]) / budget["perEnergy"]))
+        suggested = max(0, round((value - budget["base"] - bonus) / budget["perEnergy"]))
         verdict = "ok" if abs(delta) <= tol else ("OVERTUNED" if delta > 0 else "UNDERTUNED")
         if verdict != "ok":
             flagged += 1

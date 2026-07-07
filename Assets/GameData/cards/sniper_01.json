@@ -1,0 +1,25 @@
+{
+    "cardId": "sniper_01",
+    "type": "guy",
+    "displayName": "Sniper",
+    "energyCost": 3,
+    "goldCost": 0,
+    "description": "Precision.",
+    "rarity": "Common",
+    "archetypes": [
+        "Assassin",
+        "Colorless"
+    ],
+    "tags": [
+        "assassin"
+    ],
+    "baseAttack": 3,
+    "baseHealth": 1,
+    "abilities": [
+        {
+            "id": "precision",
+            "x": 1
+        }
+    ],
+    "killRewardGold": 0
+}

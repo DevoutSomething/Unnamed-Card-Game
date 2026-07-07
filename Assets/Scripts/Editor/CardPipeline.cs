@@ -27,6 +27,26 @@ namespace Game.Cards.EditorTools {
         public const string BorderAssetDir = "Assets/Resources/Skins/Borders";
         public const string AbilityAssetDir = "Assets/Resources/Abilities";
 
+        // ------------------------------------------------------------ paths
+        // AssetDatabase APIs need project-relative paths ("Assets/...") but all
+        // System.IO calls must use absolute ones: Unity's synchronous asset
+        // imports (AssetDatabase.ImportAsset / SaveAndReimport) can move the
+        // process's current directory mid-run — especially in batch mode — which
+        // silently breaks relative File/Directory calls that come after them.
+
+        static string ProjectRoot => Path.GetDirectoryName(Application.dataPath);
+
+        /// <summary>Project-relative -> absolute, for System.IO.</summary>
+        internal static string Abs(string projectRelative) =>
+            Path.Combine(ProjectRoot, projectRelative).Replace('\\', '/');
+
+        /// <summary>Absolute -> project-relative, for AssetDatabase.</summary>
+        internal static string Rel(string absolute) {
+            string norm = absolute.Replace('\\', '/');
+            string root = ProjectRoot.Replace('\\', '/') + "/";
+            return norm.StartsWith(root) ? norm.Substring(root.Length) : norm;
+        }
+
         // ---------------------------------------------------------------- DTOs
         // Field names must match the JSON keys exactly (JsonUtility rule).
 
@@ -82,22 +102,22 @@ namespace Game.Cards.EditorTools {
 
         /// <summary>Publishes abilities.json into Resources so AbilityLoader finds it at runtime.</summary>
         static int ImportAbilities() {
-            if (!File.Exists(AbilitiesJsonPath)) {
+            if (!File.Exists(Abs(AbilitiesJsonPath))) {
                 Debug.LogWarning($"[CardPipeline] {AbilitiesJsonPath} not found — cards with abilities won't resolve them.");
                 return 0;
             }
-            Directory.CreateDirectory(AbilityAssetDir);
-            File.Copy(AbilitiesJsonPath, $"{AbilityAssetDir}/abilities.json", overwrite: true);
+            Directory.CreateDirectory(Abs(AbilityAssetDir));
+            File.Copy(Abs(AbilitiesJsonPath), Abs($"{AbilityAssetDir}/abilities.json"), overwrite: true);
             AssetDatabase.ImportAsset($"{AbilityAssetDir}/abilities.json");
-            return AbilityLoader.Parse(File.ReadAllText(AbilitiesJsonPath)).Count;
+            return AbilityLoader.Parse(File.ReadAllText(Abs(AbilitiesJsonPath))).Count;
         }
 
         static int ImportCardJson() {
-            Directory.CreateDirectory(CardAssetDir);
+            Directory.CreateDirectory(Abs(CardAssetDir));
             var validIds = new HashSet<string>();
             int count = 0;
 
-            foreach (string jsonPath in FindFiles(CardJsonDir, "*.json")) {
+            foreach (string jsonPath in FindFiles(Abs(CardJsonDir), "*.json")) {
                 var dto = JsonUtility.FromJson<CardJson>(File.ReadAllText(jsonPath));
                 if (dto == null || string.IsNullOrWhiteSpace(dto.cardId)) {
                     Debug.LogError($"[CardPipeline] {jsonPath}: missing/empty cardId, skipped.");
@@ -175,9 +195,9 @@ namespace Game.Cards.EditorTools {
         /// On update only the sprite link is refreshed, so tags/unlock hand-edited
         /// on an existing CardArt asset survive re-imports.</summary>
         static int ImportCardArt() {
-            Directory.CreateDirectory(ArtAssetDir);
+            Directory.CreateDirectory(Abs(ArtAssetDir));
             int count = 0;
-            foreach (string pngPath in FindFiles(CardArtDir, "*.png")) {
+            foreach (string pngPath in FindFiles(Abs(CardArtDir), "*.png")) {
                 string stem = Path.GetFileNameWithoutExtension(pngPath);
                 int sep = stem.IndexOf("__", StringComparison.Ordinal);
                 if (sep <= 0 || sep + 2 >= stem.Length) {
@@ -208,18 +228,18 @@ namespace Game.Cards.EditorTools {
         }
 
         static int ImportBorders() {
-            if (!File.Exists(BordersJsonPath)) {
+            if (!File.Exists(Abs(BordersJsonPath))) {
                 Debug.LogWarning($"[CardPipeline] {BordersJsonPath} not found, borders skipped.");
                 return 0;
             }
-            Directory.CreateDirectory(BorderAssetDir);
-            var file = JsonUtility.FromJson<BordersFile>(File.ReadAllText(BordersJsonPath));
+            Directory.CreateDirectory(Abs(BorderAssetDir));
+            var file = JsonUtility.FromJson<BordersFile>(File.ReadAllText(Abs(BordersJsonPath)));
             int count = 0;
             foreach (var dto in file.borders) {
                 if (string.IsNullOrWhiteSpace(dto.borderId)) continue;
 
                 string pngPath = $"{BorderArtDir}/{dto.borderId}.png";
-                Sprite frame = File.Exists(pngPath) ? LoadAsSprite(pngPath) : null;
+                Sprite frame = File.Exists(Abs(pngPath)) ? LoadAsSprite(pngPath) : null;
                 if (frame == null)
                     Debug.LogWarning($"[CardPipeline] border '{dto.borderId}': no PNG at {pngPath} " +
                                      "(run Cards/Setup/Build Default Card Prefab to generate placeholders).");
@@ -247,7 +267,7 @@ namespace Game.Cards.EditorTools {
 
         [MenuItem("Cards/Pipeline/Export All (Assets to JSON)")]
         public static void ExportAll() {
-            Directory.CreateDirectory(CardJsonDir);
+            Directory.CreateDirectory(Abs(CardJsonDir));
             int count = 0;
             foreach (string guid in AssetDatabase.FindAssets("t:CardDefinition", new[] { CardAssetDir })) {
                 var def = AssetDatabase.LoadAssetAtPath<CardDefinition>(AssetDatabase.GUIDToAssetPath(guid));
@@ -272,7 +292,7 @@ namespace Game.Cards.EditorTools {
                         .ToList();
                     dto.killRewardGold = guy.KillRewardGold;
                 }
-                File.WriteAllText($"{CardJsonDir}/{def.CardId}.json",
+                File.WriteAllText(Abs($"{CardJsonDir}/{def.CardId}.json"),
                                   JsonUtility.ToJson(dto, prettyPrint: true) + "\n");
                 count++;
             }
@@ -286,8 +306,8 @@ namespace Game.Cards.EditorTools {
         public static void Validate() {
             int problems = 0;
             var ids = new Dictionary<string, string>();
-            var abilityDb = File.Exists(AbilitiesJsonPath)
-                ? AbilityLoader.Parse(File.ReadAllText(AbilitiesJsonPath))
+            var abilityDb = File.Exists(Abs(AbilitiesJsonPath))
+                ? AbilityLoader.Parse(File.ReadAllText(Abs(AbilitiesJsonPath)))
                 : new AbilityDatabase();
 
             foreach (string guid in AssetDatabase.FindAssets("t:CardDefinition", new[] { CardAssetDir })) {
@@ -298,7 +318,7 @@ namespace Game.Cards.EditorTools {
                 ids[def.CardId] = path;
                 if (string.IsNullOrWhiteSpace(def.DisplayName)) { Debug.LogWarning($"[Validate] {path}: empty DisplayName"); problems++; }
                 if (def is GuyCardDefinition g && g.BaseHealth <= 0) { Debug.LogError($"[Validate] {path}: guy BaseHealth must be >= 1"); problems++; }
-                if (!File.Exists($"{CardJsonDir}/{def.CardId}.json")) { Debug.LogWarning($"[Validate] {path}: no JSON source (orphan — see Import log)"); problems++; }
+                if (!File.Exists(Abs($"{CardJsonDir}/{def.CardId}.json"))) { Debug.LogWarning($"[Validate] {path}: no JSON source (orphan — see Import log)"); problems++; }
                 if (def is GuyCardDefinition guy)
                     foreach (var ability in guy.Abilities)
                         if (ability != null && !abilityDb.TryGet(ability.Id, out _)) {
@@ -335,12 +355,12 @@ namespace Game.Cards.EditorTools {
 
         [MenuItem("Cards/Pipeline/Create Placeholder Art")]
         public static void CreatePlaceholderArt() {
-            Directory.CreateDirectory(CardArtDir);
+            Directory.CreateDirectory(Abs(CardArtDir));
             int made = 0;
-            foreach (string jsonPath in FindFiles(CardJsonDir, "*.json")) {
+            foreach (string jsonPath in FindFiles(Abs(CardJsonDir), "*.json")) {
                 var dto = JsonUtility.FromJson<CardJson>(File.ReadAllText(jsonPath));
                 if (dto == null || string.IsNullOrWhiteSpace(dto.cardId)) continue;
-                string pngPath = $"{CardArtDir}/{dto.cardId}__base.png";
+                string pngPath = Abs($"{CardArtDir}/{dto.cardId}__base.png");
                 if (File.Exists(pngPath)) continue;
 
                 // Deterministic color per card so placeholders are telling-apart-able.
@@ -362,11 +382,17 @@ namespace Game.Cards.EditorTools {
         }
 
         internal static Sprite LoadAsSprite(string pngPath) {
+            pngPath = Rel(pngPath);   // AssetDatabase wants "Assets/..." paths
             var importer = AssetImporter.GetAtPath(pngPath) as TextureImporter;
             if (importer == null) { AssetDatabase.ImportAsset(pngPath); importer = AssetImporter.GetAtPath(pngPath) as TextureImporter; }
             if (importer == null) { Debug.LogError($"[CardPipeline] cannot import {pngPath}"); return null; }
-            if (importer.textureType != TextureImporterType.Sprite) {
+            // Must be Sprite AND Single: any other spriteImportMode (e.g. the
+            // Multiple that batch imports default to) produces no Sprite
+            // sub-asset at all, so LoadAssetAtPath<Sprite> comes back null.
+            if (importer.textureType != TextureImporterType.Sprite
+                || importer.spriteImportMode != SpriteImportMode.Single) {
                 importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
                 importer.SaveAndReimport();
             }
             return AssetDatabase.LoadAssetAtPath<Sprite>(pngPath);

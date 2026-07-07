@@ -1,8 +1,13 @@
 {
     "borders": [
-        { "borderId": "common", "unlock": "Rarity", "rarityForDefault": "Common", "requiredArtTags": [] },
-        { "borderId": "rare", "unlock": "Rarity", "rarityForDefault": "Rare", "requiredArtTags": [] },
-        { "borderId": "epic", "unlock": "Rarity", "rarityForDefault": "Epic", "requiredArtTags": [] },
-        { "borderId": "legendary", "unlock": "Rarity", "rarityForDefault": "Legendary", "requiredArtTags": [] }
+        { "borderId": "common", "unlock": "Rarity", "rarityForDefault": "Common", "requiredArtTags": [], "requiredCardTags": [] },
+        { "borderId": "rare", "unlock": "Rarity", "rarityForDefault": "Rare", "requiredArtTags": [], "requiredCardTags": [] },
+        { "borderId": "epic", "unlock": "Rarity", "rarityForDefault": "Epic", "requiredArtTags": [], "requiredCardTags": [] },
+        { "borderId": "legendary", "unlock": "Rarity", "rarityForDefault": "Legendary", "requiredArtTags": [], "requiredCardTags": [] },
+        { "borderId": "tank", "unlock": "Rarity", "rarityForDefault": "Common", "requiredArtTags": [], "requiredCardTags": ["tank"] },
+        { "borderId": "bruiser", "unlock": "Rarity", "rarityForDefault": "Common", "requiredArtTags": [], "requiredCardTags": ["bruiser"] },
+        { "borderId": "assassin", "unlock": "Rarity", "rarityForDefault": "Common", "requiredArtTags": [], "requiredCardTags": ["assassin"] },
+        { "borderId": "mage", "unlock": "Rarity", "rarityForDefault": "Common", "requiredArtTags": [], "requiredCardTags": ["mage"] },
+        { "borderId": "healer", "unlock": "Rarity", "rarityForDefault": "Common", "requiredArtTags": [], "requiredCardTags": ["healer"] }
     ]
 }

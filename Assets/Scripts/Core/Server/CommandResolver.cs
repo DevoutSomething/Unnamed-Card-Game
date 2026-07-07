@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using Game.Cards;
+using Game.Core.Abilities;
 using Game.Core.Commands;
 using Game.Core.Events;
 using Game.Core.State;
@@ -10,7 +12,7 @@ namespace Game.Core.Server
         private const int StartingHandSize = 4;
         private const int StartingEnergyCap = 1;
         private const int EnergyCapGrowthPerBlock = 1;
-        private const int CardsDrawnPerBlock = 1;
+        private const int CardsDrawnPerTurn = 1;
         private const int DeckSize = 10;
 
 
@@ -43,8 +45,7 @@ namespace Game.Core.Server
 
             foreach (var player in state.Players)
             {
-                //replace with actual deck-building once CharacterData + CardFactory wiring exists
-                BuildTestDeck(state, player);
+                BuildStarterDeck(state, player);
                 state.Rng.Shuffle(player.Deck);
 
                 player.EnergyPerTurn = StartingEnergyCap;
@@ -60,13 +61,42 @@ namespace Game.Core.Server
             state.SlotIndex = 0;
             state.RotationIndex = 0;
             EmitSlotChanged(state, events);
+            ApplyStartOfTurn(state, events);   // P0's first turn begins here
+        }
+
+        /// <summary>
+        /// DeckSize random guys from the configured card pool (seeded via
+        /// state.Rng, so the same seed always deals the same decks). Without a
+        /// configured catalog — logic tests, headless tools — falls back to the
+        /// stat-line-only vanilla deck below.
+        /// </summary>
+        private static void BuildStarterDeck(GameState state, Player player)
+        {
+            // Starter decks deal "basic commons" only (game_plan) — rarer cards
+            // will come from the shop/rewards once those exist.
+            var guys = new List<CardDefinition>();
+            foreach (var def in CardCatalogRuntime.Pool)
+                if (def is GuyCardDefinition && def.Rarity == Rarity.Common)
+                    guys.Add(def);
+
+            if (guys.Count == 0)
+            {
+                BuildTestDeck(state, player);
+                return;
+            }
+
+            foreach (var def in state.Rng.PickN(guys, DeckSize))
+            {
+                if (CardFactory.TryCreate(state, def, player.Id, out var card, out _))
+                    player.Deck.Add(card);
+            }
         }
 
         private static void BuildTestDeck(GameState state, Player player)
         {
             for (int i = 0; i < DeckSize; i++)
             {
-                int cost = (i % 3) + 1; 
+                int cost = (i % 3) + 1;
                 player.Deck.Add(new CardInstance
                 {
                     InstanceId = state.NextCardInstanceId++,
@@ -74,6 +104,7 @@ namespace Game.Core.Server
                     OwnerId = player.Id,
                     CurrentAttack = cost + 1,
                     CurrentHealth = cost + 1,
+                    MaxHealth = cost + 1,
                     CurrentCost = cost,
                     KillRewardGold = 1,
                 });
@@ -122,6 +153,14 @@ namespace Game.Core.Server
             player.cardsInHand.Remove(card);
             sublane.Place(card, slot);
             events.Add(new CardPlayedEvent(cmd.PlayerId, card.InstanceId, cmd.LaneIndex, slot));
+
+            // OnPlay abilities. Only card draw exists so far (Initiate).
+            int draws = AbilityRuntime.Sum(
+                card, AbilityTrigger.OnPlay, AbilityEffect.DrawCard, AbilityTarget.Owner);
+            for (int i = 0; i < draws; i++)
+            {
+                DrawCard(state, player, events);
+            }
         }
 
         private static void HandleEndPhase(GameState state, EndPhaseCommand cmd, List<GameEvent> events)
@@ -171,12 +210,74 @@ namespace Game.Core.Server
                     AdvanceSlot(state, events);
                     break;
 
-                case SlotType.Action:   
-                    //stop advancing the slot.
+                case SlotType.Action:
+                    // A new turn begins: settle here, draw, fire turn keywords.
+                    ApplyStartOfTurn(state, events);
                     break;
             }
         }
 
+        /// <summary>
+        /// Everything that happens when a player's action slot begins (each
+        /// action slot in the rotation counts as one turn): the turn draw, then
+        /// the board's StartOfTurn keywords — regen (guy heals itself),
+        /// heroregen (heals its owner), goldgen (owner gains gold) and
+        /// goldsteal (taken from the opponent).
+        /// </summary>
+        private static void ApplyStartOfTurn(GameState state, List<GameEvent> events)
+        {
+            if (state.CurrentSlotType != SlotType.Action) return;
+
+            var player = state.Players[state.ActivePlayerId];
+            var opponent = state.Players[1 - player.Id];
+
+            for (int i = 0; i < CardsDrawnPerTurn; i++)
+            {
+                DrawCard(state, player, events);
+            }
+
+            foreach (var lane in state.Lanes)
+            {
+                foreach (var card in lane.SublaneOf(player.Id).Cards)
+                {
+                    if (card.CurrentHealth <= 0) continue;
+
+                    int selfHeal = AbilityRuntime.Sum(
+                        card, AbilityTrigger.StartOfTurn, AbilityEffect.Heal, AbilityTarget.Self);
+                    if (selfHeal > 0)
+                    {
+                        MutationHelper.HealCard(card, selfHeal, events);
+                    }
+
+                    int heroHeal = AbilityRuntime.Sum(
+                        card, AbilityTrigger.StartOfTurn, AbilityEffect.Heal, AbilityTarget.Owner);
+                    if (heroHeal > 0)
+                    {
+                        MutationHelper.HealPlayer(player, heroHeal, events);
+                    }
+
+                    int gold = AbilityRuntime.Sum(
+                        card, AbilityTrigger.StartOfTurn, AbilityEffect.GainGold, AbilityTarget.Owner);
+                    if (gold > 0)
+                    {
+                        MutationHelper.GiveGold(player, gold, events);
+                    }
+
+                    int steal = AbilityRuntime.Sum(
+                        card, AbilityTrigger.StartOfTurn, AbilityEffect.StealGold, AbilityTarget.Owner);
+                    if (steal > 0)
+                    {
+                        MutationHelper.StealGold(player, opponent, steal, events);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Combat ends a block: energy caps grow and refill. Card draw is NOT
+        /// tied to blocks — players draw at the start of each of their turns
+        /// (ApplyStartOfTurn), per the "draw one per turn" design.
+        /// </summary>
         private static void StartNewEnergyBlock(GameState state, List<GameEvent> events)
         {
             foreach (var player in state.Players)
@@ -184,11 +285,6 @@ namespace Game.Core.Server
                 player.EnergyPerTurn += EnergyCapGrowthPerBlock;
                 player.CurrentEnergy = player.EnergyPerTurn;
                 events.Add(new EnergyChangedEvent(player.Id, player.CurrentEnergy, player.EnergyPerTurn));
-
-                for (int i = 0; i < CardsDrawnPerBlock; i++)
-                {
-                    DrawCard(state, player, events);
-                }
             }
         }
 

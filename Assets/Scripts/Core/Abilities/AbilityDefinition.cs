@@ -11,7 +11,9 @@ namespace Game.Core.Abilities
         OnAttack,       // when this card deals combat damage
         OnKill,         // when this card kills another card
         OnDeath,        // when this card dies
+        OnHealed,       // when this card actually recovers health
         StartOfCombat,
+        StartOfTurn,    // when the owner's action slot begins (regen keywords)
         EndOfTurn,
     }
 
@@ -23,8 +25,14 @@ namespace Game.Core.Abilities
         Heal,
         BuffAttack,
         BuffHealth,
+        BuffStats,      // +X attack AND +X health (growth, mending)
         GainGold,
+        StealGold,      // steal gold from the enemy player, scaled by damage dealt to them (rob)
         DrawCard,
+        HitAllInLane,   // this card's attacks hit every enemy guy in the lane (pierce)
+        Overkill,       // excess attack damage carries over to the enemy player
+        ExtraAttack,    // this card attacks X extra times (double tap)
+        TargetPlayer,   // this card attacks the enemy player directly, ignoring blockers (precision)
         ApplyStatus,    // add StatusId to the target's StatusEffects
     }
 
