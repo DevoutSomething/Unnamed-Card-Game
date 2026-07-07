@@ -1,3 +1,5 @@
+using Newtonsoft.Json;
+
 namespace Game.Core.State
 {
     public class GameState
@@ -53,6 +55,28 @@ namespace Game.Core.State
             // SlotIndex = 0 by default, which is P1's first action slot
             // per the Rotation table. RotationIndex = 0. Nothing else to do —
             // HandleStartGame sets these explicitly anyway.
+        }
+
+        /// <summary>
+        /// Reconstructs a GameState wholesale from a network snapshot (see
+        /// Game.Net.NetworkClientServer). Explicit and [JsonConstructor]-marked
+        /// rather than relying on the constructor above plus post-construction
+        /// property assignment: Newtonsoft only auto-populates properties left
+        /// over by whichever constructor it picks, and Seed/Players/Lanes/Rng
+        /// have no setters at all — this constructor is the one place they're
+        /// assigned directly, so it must be handed every one of them.
+        /// </summary>
+        [JsonConstructor]
+        private GameState(int seed, Player[] players, Lane[] lanes, Game.Core.Util.GameRng rng,
+                           int slotIndex, int rotationIndex, int nextCardInstanceId)
+        {
+            Seed = seed;
+            Players = players;
+            Lanes = lanes;
+            Rng = rng;
+            SlotIndex = slotIndex;
+            RotationIndex = rotationIndex;
+            NextCardInstanceId = nextCardInstanceId;
         }
     }
 }

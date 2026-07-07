@@ -88,4 +88,34 @@ Day-to-day loop: edit JSON (or use `cards.py`) → Unity menu `Cards ▸ Pipelin
 
 Known gaps, all deliberate for the MVP: no shop/augments/events (rotation slots exist but
 pass through), no spells (all 22 cards are guys), an empty deck silently stops drawing
-(no reshuffle/fatigue yet), and no networking (both players share one machine).
+(no reshuffle/fatigue yet).
+
+## Unreleased — basic online play
+
+Closes the "both players share one machine" gap. The main menu now offers Local
+(hot-seat, unchanged) alongside Host/Join over the network.
+
+- **`Assets/Scripts/Net/`** — a small hand-rolled layer, not a networking package:
+  `NetChannel` frames JSON over a raw TCP socket; `NetworkHostServer` is the host's
+  own `GameController` plus the authoritative `GameState` (it runs `CommandResolver`
+  for both players and broadcasts the result); `NetworkClientServer` just forwards
+  the joining player's commands to the host and displays whatever comes back. Both
+  implement the same `IGameServer` interface `LocalGameServer` now also implements,
+  so `GameController`/`BoardView` don't know or care which kind of match they're in.
+- **`LobbyView`** — code-built like `BoardView`: a main menu (name, Local/Host/Join),
+  the host's waiting room (share address, wait for opponent, Start Match), and the
+  joining client's connection status. `GameController` now boots into this instead
+  of starting a match immediately.
+- **Wire format** is Newtonsoft JSON (`com.unity.nuget.newtonsoft-json`, added to
+  `Packages/manifest.json`) with a short-type-name binder for the polymorphic
+  `Command`/`GameEvent`/`NetMessage` hierarchies. `GameState` needed a `[JsonConstructor]`
+  (it has no default constructor) and two spots marked `[JsonIgnore]`: `Player.CardBack`
+  (a ScriptableObject reference — can't cross the wire) and `Sublane.Cards` (a computed
+  LINQ view over `Slots`, which is already serialized).
+- **Known limitations, deliberately deferred:** the host sends the *full* GameState
+  (both hands) to the client every update — fine between trusted friends, not
+  hidden-information-safe against a modified client. LAN works out of the box;
+  internet play needs the host to port-forward the TCP port (default 7777) and share
+  their public address. No rematch over a network match yet (Play Again backs out to
+  the main menu instead). Exactly one opponent slot — a second connection attempt
+  gets a polite rejection, not a bigger lobby.

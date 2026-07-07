@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -7,6 +8,7 @@ using Game.Core.Commands;
 using Game.Core.Events;
 using Game.Core.Server;
 using Game.Core.State;
+using Game.Net;
 
 namespace Game.Client
 {
@@ -21,6 +23,8 @@ namespace Game.Client
     ///     -> GameController input method
     ///       -> _server.Submit(command)
     ///         -> CommandResolver validates + mutates GameState + returns events
+    ///           (locally for LocalGameServer/NetworkHostServer; on the host,
+    ///           for NetworkClientServer — see Game.Net)
     ///       -> HandleEvents(batch) fires synchronously
     ///         -> BoardView.Redraw() rebuilds visuals from _server.State
     ///
@@ -28,27 +32,62 @@ namespace Game.Client
     /// whatever comes back. Rejections are shown, not prevented — the resolver
     /// stays the referee.
     ///
-    /// HOT-SEAT: commands are always sent as whoever the rotation says is
-    /// active, and the hand strip always shows that player's hand. Two players,
-    /// one keyboard, zero extra code.
+    /// MATCH KINDS
+    /// -----------
+    ///   Local (hot-seat): commands are always sent as whoever the rotation
+    ///   says is active, and the hand strip always shows that player's hand.
+    ///   Two players, one keyboard, zero extra code.
+    ///
+    ///   Online (host/join): LobbyView gathers a host/join choice first; the
+    ///   host is always player 0 and the joining client always player 1 (see
+    ///   Game.Net.NetworkHostServer/NetworkClientServer). Each side only ever
+    ///   acts as its own fixed player id and only ever sees its own hand.
     /// </summary>
     public class GameController : MonoBehaviour
     {
         [Header("Config")]
         [Tooltip("0 = random seed every match. Set non-zero to reproduce a game exactly.")]
         [SerializeField] private int seed = 0;
+        [Tooltip("TCP port used for both hosting and joining.")]
+        [SerializeField] private int port = 7777;
 
-        private LocalGameServer _server;
+        private IGameServer _server;
+        private NetworkHostServer _hostServer;
+        private NetworkClientServer _clientServer;
+
+        /// <summary>null = hot-seat (acting player follows the turn rotation);
+        /// otherwise the fixed player id this client acts as (0 = host, 1 = joined).</summary>
+        private int? _actingPlayerId;
+
         private BoardView _board;
+        private LobbyView _lobby;
         private CardDatabase _db;
         private CardSkinLibrary _skins;
 
-        private int ActivePlayer => _server.State.ActivePlayerId;
+        /// <summary>
+        /// Online, always the fixed assigned id. Hot-seat, normally whoever's
+        /// turn it is — except State.ActivePlayerId is -1 (a system slot's
+        /// "no owning player") right when a match ends: the game can only end
+        /// during Combat, and CommandResolver deliberately stops advancing the
+        /// instant IsGameOver becomes true, leaving SlotIndex parked on that
+        /// Combat slot. Redraw() still needs a valid 0/1 to render the
+        /// game-over board with (Players[-1] would throw), so this falls back
+        /// to player 0 rather than propagating the sentinel into the view.
+        /// </summary>
+        private int ActingPlayerId
+        {
+            get
+            {
+                if (_actingPlayerId.HasValue) return _actingPlayerId.Value;
+                int active = _server.State.ActivePlayerId;
+                return active >= 0 ? active : 0;
+            }
+        }
 
         private void Start()
         {
             // Bootstrap: abilities + card pool (both discovered from imported
-            // assets), skins for rendering, then the board and the match itself.
+            // assets), skins for rendering, then the pre-match menu.
             AbilityLoader.Bootstrap();
             _db = new CardDatabase();
             _skins = new CardSkinLibrary();
@@ -57,57 +96,207 @@ namespace Game.Client
                 Debug.LogWarning("GameController: no cards found — run Cards > Pipeline > Import All. " +
                                  "Falling back to vanilla test decks.");
 
-            _board = new BoardView();
-            _board.Build(this, _db, _skins, laneCount: 5, slotsPerSide: 2);
-
-            _server = new LocalGameServer();
-            _server.OnEvents += HandleEvents;   // subscribe BEFORE StartNewGame
-            StartMatch();
+            _lobby = new LobbyView();
+            _lobby.Build(this);
         }
 
-        private void StartMatch()
+        // ---------------------------------------------------------------
+        // LOBBY (wired to LobbyView's buttons)
+        // ---------------------------------------------------------------
+
+        public void OnLocalMatchClicked()
+        {
+            _actingPlayerId = null;
+            _server = new LocalGameServer();
+            _server.OnEvents += HandleEvents;   // subscribe BEFORE StartNewGame
+            BeginMatchView();
+            StartLocalMatch();
+        }
+
+        public void OnHostClicked(string playerName)
+        {
+            TeardownNetworking();
+            try
+            {
+                _hostServer = new NetworkHostServer(port, playerName);
+            }
+            catch (Exception e)
+            {
+                _lobby.ShowMainMenu($"Couldn't start hosting on port {port}: {e.Message}");
+                return;
+            }
+
+            _hostServer.OnOpponentJoined += name => _lobby.SetHostOpponentStatus(true, name);
+            _hostServer.OnOpponentDisconnected += reason =>
+            {
+                _lobby.SetHostOpponentStatus(false, null);
+                // Mid-match this reaches an already-hidden lobby label — surface it on the board too.
+                if (_actingPlayerId.HasValue) _board?.ShowMessage($"Opponent disconnected: {reason}");
+            };
+            _lobby.ShowHostLobby(port, NetworkHostServer.GetLocalAddresses());
+        }
+
+        public void OnJoinClicked(string playerName, string addressText)
+        {
+            if (!TryParseAddress(addressText, out string host, out int joinPort))
+            {
+                _lobby.ShowMainMenu("Enter an address like 192.168.1.12:7777");
+                return;
+            }
+
+            TeardownNetworking();
+            _clientServer = new NetworkClientServer(host, joinPort, playerName);
+            _clientServer.OnWelcomed += _ =>
+                _lobby.SetJoinStatus("Connected! Waiting for host to start the match...");
+            _clientServer.OnMatchStarted += () =>
+            {
+                _actingPlayerId = _clientServer.LocalPlayerId;
+                _server = _clientServer;
+                _server.OnEvents += HandleEvents;
+                BeginMatchView();
+            };
+            _clientServer.OnDisconnected += reason =>
+            {
+                TeardownNetworking();
+                _lobby.ShowMainMenu($"Disconnected: {reason}");
+            };
+
+            _lobby.ShowJoinLobby($"{host}:{joinPort}");
+        }
+
+        public void OnStartMatchClicked()
+        {
+            if (_hostServer == null || !_hostServer.OpponentConnected) return;
+
+            _actingPlayerId = 0;
+            _server = _hostServer;
+            _server.OnEvents += HandleEvents;   // subscribe BEFORE StartMatch
+            BeginMatchView();
+
+            int matchSeed = seed != 0 ? seed : new System.Random().Next(1, int.MaxValue);
+            Debug.Log($"starting hosted match with seed {matchSeed}");
+            _hostServer.StartMatch(matchSeed);
+        }
+
+        public void OnLobbyCancelClicked()
+        {
+            TeardownNetworking();
+            _lobby.ShowMainMenu();
+        }
+
+        private static bool TryParseAddress(string text, out string host, out int port)
+        {
+            host = null;
+            port = 7777;
+            if (string.IsNullOrWhiteSpace(text)) return false;
+
+            text = text.Trim();
+            int splitAt = text.LastIndexOf(':');
+            if (splitAt < 0)
+            {
+                host = text;
+                return true;
+            }
+
+            host = text.Substring(0, splitAt);
+            return int.TryParse(text.Substring(splitAt + 1), out port) && !string.IsNullOrEmpty(host);
+        }
+
+        private void TeardownNetworking()
+        {
+            _hostServer?.Dispose();
+            _hostServer = null;
+            _clientServer?.Dispose();
+            _clientServer = null;
+        }
+
+        private void BeginMatchView()
+        {
+            if (_board == null)
+            {
+                _board = new BoardView();
+                _board.Build(this, _db, _skins, laneCount: 5, slotsPerSide: 2);
+            }
+            _board.SetVisible(true);
+            _lobby.Hide();
+        }
+
+        private void StartLocalMatch()
         {
             int matchSeed = seed != 0 ? seed : new System.Random().Next(1, int.MaxValue);
             Debug.Log($"starting match with seed {matchSeed}");
-            _server.StartNewGame(matchSeed);    // -> StartGame batch -> HandleEvents -> Redraw
+            ((LocalGameServer)_server).StartNewGame(matchSeed);   // -> StartGame batch -> HandleEvents -> Redraw
         }
 
         // ---------------------------------------------------------------
         // INPUT (wired to BoardView's drag handlers; keyboard fallback below)
         // ---------------------------------------------------------------
 
-        /// <summary>Hand card dropped on a lane: sends the play command.</summary>
-        public void PlayCard(CardInstance card, int laneIndex)
+        /// <summary>Hand card dropped on a lane: sends the play command.
+        /// slotIndex -1 (the default, used by the keyboard-fallback play) means
+        /// auto-place to the closest empty slot; a dragged card instead names
+        /// the exact front(0)/back(1) slot it was dropped on.</summary>
+        public void PlayCard(CardInstance card, int laneIndex, int slotIndex = -1)
         {
             if (_server.State.IsGameOver) return;
 
-            _server.Submit(new PlayCardCommand(
-                ActivePlayer,
-                card.InstanceId,
-                laneIndex));            // SlotIndex omitted -> -1 -> auto-place
+            _server.Submit(new PlayCardCommand(ActingPlayerId, card.InstanceId, laneIndex, slotIndex));
 
             Redraw();
         }
+
+        /// <summary>Dragging a hand card over a lane: preview which slot it'll land in.</summary>
+        public void ShowDropPreview(int laneIndex, int slotIndex, int forPlayerId) =>
+            _board.ShowDropPreview(laneIndex, slotIndex, forPlayerId);
+
+        /// <summary>Drag ended or moved off every lane: hide the preview.</summary>
+        public void ClearDropPreview() => _board.ClearDropPreview();
+
+        /// <summary>A hand-reorder drag settled without playing the card: persist its new position.</summary>
+        public void CommitHandOrder() => _board.CommitHandOrder();
+
+        /// <summary>True for the duration of a hand-reorder drag, so a redraw
+        /// triggered by something else mid-drag (online, the opponent's
+        /// rejected action still broadcasts a state update) doesn't rebuild
+        /// the hand strip out from under the card Unity is still dragging.</summary>
+        public void SetHandDragInProgress(bool inProgress) => _board.SetHandDragInProgress(inProgress);
 
         /// <summary>End Phase button clicked.</summary>
         public void EndPhase()
         {
             if (_server.State.IsGameOver) return;
             _board.ShowMessage("");
-            _server.Submit(new EndPhaseCommand(ActivePlayer));
+            _server.Submit(new EndPhaseCommand(ActingPlayerId));
         }
 
-        /// <summary>Play Again button on the game-over overlay.</summary>
-        public void Restart() => StartMatch();
+        /// <summary>
+        /// The game-over overlay's single button, local or online alike:
+        /// tears down any network connection, drops the finished match
+        /// entirely, and backs out to the main menu. No in-place rematch —
+        /// starting another match (local, host, or join) always goes back
+        /// through the menu, so there's never a stale/diverged match left
+        /// sitting on screen.
+        /// </summary>
+        public void ReturnToMainMenu()
+        {
+            TeardownNetworking();
+            _server = null;
+            _actingPlayerId = null;
+            _board.SetVisible(false);
+            _lobby.ShowMainMenu();
+        }
 
         /// <summary>
         /// Keyboard fallback (handy while testing):
-        ///   Space  = end phase (as active player)
-        ///   P      = play first affordable card in active player's hand to lane 0
+        ///   Space  = end phase (as the acting player)
+        ///   P      = play first affordable card in the acting player's hand to lane 0
         /// Compiled against whichever input backend the project has active.
         /// </summary>
         private void Update()
         {
+            _hostServer?.Pump();
+            _clientServer?.Pump();
+
             if (_server == null || _server.State == null || _server.State.IsGameOver) return;
 
 #if ENABLE_INPUT_SYSTEM
@@ -125,11 +314,16 @@ namespace Game.Client
 
             if (playFirstPressed)
             {
-                var player = _server.State.Players[ActivePlayer];
+                var player = _server.State.Players[ActingPlayerId];
                 var card = player.cardsInHand.Find(c => c.CurrentCost <= player.CurrentEnergy);
                 if (card != null) PlayCard(card, 0);
                 else Debug.Log("no affordable card in hand");
             }
+        }
+
+        private void OnDestroy()
+        {
+            TeardownNetworking();
         }
 
         // ---------------------------------------------------------------
@@ -171,6 +365,6 @@ namespace Game.Client
             Redraw();
         }
 
-        private void Redraw() => _board.Redraw(_server.State);
+        private void Redraw() => _board.Redraw(_server.State, ActingPlayerId);
     }
 }

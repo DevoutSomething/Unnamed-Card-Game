@@ -8,7 +8,7 @@ using Game.Core.State;
 namespace Game.Client
 {
 
-    public class LocalGameServer
+    public class LocalGameServer : IGameServer
     {
         /// <summary>
         /// The authoritative game state.
@@ -38,11 +38,14 @@ namespace Game.Client
 
         /// <summary>
         /// The single entry point for anything wanting to change the game.
-        /// Synchronous today: by the time this returns, State is already
-        /// mutated and subscribers have already handled the events.
-        /// (The remote version will be async — don't write UI code that
-        /// depends on Submit finishing "instantly", e.g. reading State on
-        /// the line after Submit instead of reacting to events.)
+        /// Synchronous here: by the time this returns, State is already
+        /// mutated and subscribers have already handled the events. Not so
+        /// for Game.Net.NetworkClientServer's Submit — it just sends the
+        /// command to the host and returns, with State/OnEvents only updating
+        /// once the host's reply arrives — so don't write UI code against
+        /// IGameServer that depends on Submit finishing "instantly" (e.g.
+        /// reading State on the line after Submit instead of reacting to
+        /// OnEvents); it happens to be true here but isn't part of the contract.
         /// </summary>
         public void Submit(Command cmd)
         {

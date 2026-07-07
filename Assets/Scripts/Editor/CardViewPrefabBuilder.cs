@@ -89,17 +89,17 @@ namespace Game.Cards.EditorTools {
             view.ArtImage = AddImage(root, "Art", new Vector2(0.07f, 0.42f), new Vector2(0.93f, 0.90f));
             view.ArtImage.preserveAspect = false;
             view.NameText = AddText(root, "Name", new Vector2(0.07f, 0.90f), new Vector2(0.93f, 0.99f),
-                                    16, FontStyle.Bold, TextAnchor.MiddleCenter);
+                                    18, FontStyle.Bold, TextAnchor.MiddleCenter);
             view.DescriptionText = AddText(root, "Description", new Vector2(0.09f, 0.12f), new Vector2(0.91f, 0.40f),
-                                           12, FontStyle.Normal, TextAnchor.UpperCenter);
+                                           13, FontStyle.Normal, TextAnchor.UpperCenter);
             view.CostText = AddText(root, "Cost", new Vector2(0.01f, 0.88f), new Vector2(0.18f, 1.00f),
-                                    22, FontStyle.Bold, TextAnchor.MiddleCenter);
+                                    24, FontStyle.Bold, TextAnchor.MiddleCenter);
             view.CostText.color = new Color(0.45f, 0.75f, 1f);
             view.AttackText = AddText(root, "Attack", new Vector2(0.02f, 0.00f), new Vector2(0.20f, 0.12f),
-                                      22, FontStyle.Bold, TextAnchor.MiddleCenter);
+                                      24, FontStyle.Bold, TextAnchor.MiddleCenter);
             view.AttackText.color = new Color(1f, 0.75f, 0.35f);
             view.HealthText = AddText(root, "Health", new Vector2(0.80f, 0.00f), new Vector2(0.98f, 0.12f),
-                                      22, FontStyle.Bold, TextAnchor.MiddleCenter);
+                                      24, FontStyle.Bold, TextAnchor.MiddleCenter);
             view.HealthText.color = new Color(1f, 0.40f, 0.40f);
 
             // Border last so the frame draws on top of everything.

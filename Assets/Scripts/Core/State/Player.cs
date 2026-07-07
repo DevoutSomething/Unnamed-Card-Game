@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Game.Cards;
+using Newtonsoft.Json;
 
 namespace Game.Core.State {
     public class Player {
@@ -10,8 +11,8 @@ namespace Game.Core.State {
         public int CurrentEnergy;
         public int EnergyPerTurn;
 
-        public int TurnNumber;   
-        public int SlotIndex;      
+        public int TurnNumber;
+        public int SlotIndex;
 
         public Slot CurrentSlot => Rotation.Slots[SlotIndex];
         public int ActivePlayerId => CurrentSlot.PlayerId;
@@ -20,6 +21,9 @@ namespace Game.Core.State {
 
         //card back is stored in player object, as cardback will be the same across all cards in a deck
         //regardless of card rarity or art/border customizations so as not to give away info about the players hand
+        // [JsonIgnore]: a ScriptableObject asset reference can't cross the wire —
+        // see Game.Net.NetworkHostServer/NetworkClientServer.
+        [JsonIgnore]
         public CardBack CardBack;
         public List<CardInstance> cardsInHand = new List<CardInstance>();
         public List<CardInstance> Deck = new List<CardInstance>();
