@@ -14,6 +14,7 @@ namespace Game.Core.Server
         private const int EnergyCapGrowthPerBlock = 1;
         private const int CardsDrawnPerBlock = 1;
         private const int DeckSize = 10;
+        private const int MaxHandSize = 7;
 
 
         public static List<GameEvent> Resolve(GameState state, Command cmd)
@@ -76,14 +77,7 @@ namespace Game.Core.Server
             // will come from the shop/rewards once those exist.
             var guys = new List<CardDefinition>();
             foreach (var def in CardCatalogRuntime.Pool)
-                if (def is GuyCardDefinition && def.Rarity == Rarity.Common)
-                    guys.Add(def);
-
-            if (guys.Count == 0)
-            {
-                BuildTestDeck(state, player);
-                return;
-            }
+                guys.Add(def);
 
             foreach (var def in state.Rng.PickN(guys, DeckSize))
             {
@@ -307,6 +301,7 @@ namespace Game.Core.Server
         private static void DrawCard(GameState state, Player player, List<GameEvent> events)
         {
             if (player.Deck.Count == 0) return; //shuffle TODO
+            if (player.cardsInHand.Count >= MaxHandSize) return;
 
             var card = player.Deck[0];
             player.Deck.RemoveAt(0);

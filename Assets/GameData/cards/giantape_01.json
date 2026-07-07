@@ -1,0 +1,20 @@
+{
+  "cardId": "giantape_01",
+  "type": "guy",
+  "displayName": "Giant Ape",
+  "energyCost": 5,
+  "goldCost": 0,
+  "description": "Powerful and aggressive.",
+  "rarity": "Rare",
+  "archetypes": ["Bruiser"],
+  "tags": [],
+  "baseAttack": 7,
+  "baseHealth": 7,
+  "abilities": [
+    {
+      "id": "overkill",
+      "x": 1
+    }
+  ],
+  "killRewardGold": 80
+}
