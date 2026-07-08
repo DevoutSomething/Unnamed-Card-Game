@@ -1,0 +1,20 @@
+{
+  "cardId": "initiate_01",
+  "type": "guy",
+  "displayName": "Initiate",
+  "energyCost": 4,
+  "goldCost": 0,
+  "description": "Draw 2.",
+  "rarity": "Uncommon",
+  "archetypes": ["Mage", "Colorless"],
+  "tags": ["mage"],
+  "baseAttack": 3,
+  "baseHealth": 2,
+  "abilities": [
+    {
+      "id": "draw",
+      "x": 2
+    }
+  ],
+  "killRewardGold": 25
+}

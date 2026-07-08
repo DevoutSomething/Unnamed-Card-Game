@@ -1,0 +1,15 @@
+{
+  "cardId": "initiate_01",
+  "type": "guy",
+  "displayName": "Initiate",
+  "energyCost": 0,
+  "goldCost": 0,
+  "description": "Does nothing",
+  "rarity": "Common",
+  "archetypes": [],
+  "tags": ["Bruiser"],
+  "baseAttack": 1,
+  "baseHealth": 1,
+  "abilities": [],
+  "killRewardGold": 0
+}
