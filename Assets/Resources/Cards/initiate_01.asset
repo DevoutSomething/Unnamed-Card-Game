@@ -14,16 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Game.Cards.GuyCardDefinition
   CardId: initiate_01
   DisplayName: Initiate
-  EnergyCost: 2
+  EnergyCost: 4
   GoldCost: 0
-  Description: Draw 1.
-  Rarity: 0
+  Description: Draw 2.
+  Rarity: 1
   Archetypes: 0400000000000000
   Tags:
   - mage
-  BaseAttack: 1
-  BaseHealth: 1
+  BaseAttack: 3
+  BaseHealth: 2
   Abilities:
   - Id: draw
-    X: 1
-  KillRewardGold: 0
+    X: 2
+  KillRewardGold: 25

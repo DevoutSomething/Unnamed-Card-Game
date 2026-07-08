@@ -5,7 +5,7 @@
   "energyCost": 4,
   "goldCost": 0,
   "description": "Draw 2.",
-  "rarity": "Uncommon",
+  "rarity": "Rare",
   "archetypes": ["Mage", "Colorless"],
   "tags": ["mage"],
   "baseAttack": 3,

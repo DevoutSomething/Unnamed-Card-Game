@@ -38,7 +38,10 @@ namespace Game.Client.View
             bool isGuy = guy != null;
             SetText(AttackText, isGuy ? (inst?.CurrentAttack ?? guy.BaseAttack).ToString() : null);
             SetText(HealthText, isGuy ? (inst?.CurrentHealth ?? guy.BaseHealth).ToString() : null);
-
+            HealthText.color = Color.white;
+            if(isGuy && inst?.CurrentHealth < guy.BaseHealth)
+                HealthText.color = Color.red;
+            
             SetSprite(ArtImage, skin?.Art != null ? skin.Art.Image : null);
             SetSprite(BorderImage, skin?.Border != null ? skin.Border.Frame : null);
         }
