@@ -1,184 +1,194 @@
 {
-    "abilities": [
-        {
-            "abilityId": "defend",
-            "displayName": "Defend",
-            "description": "Takes {X} less damage from attacks.",
-            "trigger": "OnDamaged",
-            "effect": "ReduceDamage",
-            "target": "Self",
-            "costPerX": 1.0,
-            "flatCost": 0.5
-        },
-        {
-            "abilityId": "thorns",
-            "displayName": "Thorns",
-            "description": "When attacked, deals {X} damage back to the attacker.",
-            "trigger": "OnDamaged",
-            "effect": "DealDamage",
-            "target": "Attacker",
-            "costPerX": 0.75,
-            "flatCost": 0.25
-        },
-        {
-            "abilityId": "bounty",
-            "displayName": "Bounty",
-            "description": "Gain {X} gold when this guy kills another guy.",
-            "trigger": "OnKill",
-            "effect": "GainGold",
-            "target": "Owner",
-            "costPerX": 0.05,
-            "flatCost": 0.25
-        },
-        {
-            "abilityId": "herodamage",
-            "displayName": "Hero Damage",
-            "description": "At the start of combat, deals {X} damage to the enemy player.",
-            "trigger": "StartOfCombat",
-            "effect": "DealDamage",
-            "target": "EnemyPlayer",
-            "costPerX": 1.0,
-            "flatCost": 0.25
-        },
-        {
-            "abilityId": "guydamage",
-            "displayName": "Guy Damage",
-            "description": "At the start of combat, deals {X} damage to a random enemy guy.",
-            "trigger": "StartOfCombat",
-            "effect": "DealDamage",
-            "target": "RandomEnemy",
-            "costPerX": 0.8,
-            "flatCost": 0.25
-        },
-        {
-            "abilityId": "heal",
-            "displayName": "Heal",
-            "description": "At the start of combat, restores {X} health to your guys in this lane.",
-            "trigger": "StartOfCombat",
-            "effect": "Heal",
-            "target": "AlliesInLane",
-            "costPerX": 0.75,
-            "flatCost": 0.25
-        },
-        {
-            "abilityId": "rob",
-            "displayName": "Rob",
-            "description": "When this guy damages the enemy player, steals {X} gold per damage dealt.",
-            "trigger": "OnAttack",
-            "effect": "StealGold",
-            "target": "Owner",
-            "costPerX": 0.05,
-            "flatCost": 0.25
-        },
-        {
-            "abilityId": "overkill",
-            "displayName": "Overkill",
-            "description": "Excess damage from this guy's attacks hits the enemy player.",
-            "trigger": "OnAttack",
-            "effect": "Overkill",
-            "target": "EnemyPlayer",
-            "costPerX": 0.5,
-            "flatCost": 0.5
-        },
-        {
-            "abilityId": "draw",
-            "displayName": "Draw",
-            "description": "When played, draw {X} card(s).",
-            "trigger": "OnPlay",
-            "effect": "DrawCard",
-            "target": "Owner",
-            "costPerX": 0.75,
-            "flatCost": 0.25
-        },
-        {
-            "abilityId": "pierce",
-            "displayName": "Pierce",
-            "description": "This guy's attacks hit every enemy guy in the lane.",
-            "trigger": "OnAttack",
-            "effect": "HitAllInLane",
-            "target": "EnemiesInLane",
-            "costPerX": 0.75,
-            "flatCost": 0.5
-        },
-        {
-            "abilityId": "precision",
-            "displayName": "Precision",
-            "description": "This guy attacks the enemy player directly.",
-            "trigger": "Passive",
-            "effect": "TargetPlayer",
-            "target": "Self",
-            "costPerX": 0.5,
-            "flatCost": 0.25
-        },
-        {
-            "abilityId": "growth",
-            "displayName": "Growth",
-            "description": "At the start of combat, permanently gains +{X}/+{X}.",
-            "trigger": "StartOfCombat",
-            "effect": "BuffStats",
-            "target": "Self",
-            "costPerX": 1.5,
-            "flatCost": 0.25
-        },
-        {
-            "abilityId": "doubletap",
-            "displayName": "Double Tap",
-            "description": "This guy attacks {X} extra time(s).",
-            "trigger": "Passive",
-            "effect": "ExtraAttack",
-            "target": "Self",
-            "costPerX": 1.5,
-            "flatCost": 0.5
-        },
-        {
-            "abilityId": "mending",
-            "displayName": "Mending",
-            "description": "Whenever this guy is healed, it permanently gains +{X}/+{X}.",
-            "trigger": "OnHealed",
-            "effect": "BuffStats",
-            "target": "Self",
-            "costPerX": 1.0,
-            "flatCost": 0.25
-        },
-        {
-            "abilityId": "regen",
-            "displayName": "Regen",
-            "description": "At the start of your turn, this guy heals {X}.",
-            "trigger": "StartOfTurn",
-            "effect": "Heal",
-            "target": "Self",
-            "costPerX": 1.0,
-            "flatCost": 0.25
-        },
-        {
-            "abilityId": "heroregen",
-            "displayName": "Hero Regen",
-            "description": "At the start of your turn, restore {X} health to your hero.",
-            "trigger": "StartOfTurn",
-            "effect": "Heal",
-            "target": "Owner",
-            "costPerX": 0.5,
-            "flatCost": 0.25
-        },
-        {
-            "abilityId": "goldgen",
-            "displayName": "Gold Gen",
-            "description": "Gain {X} gold at the start of your turn.",
-            "trigger": "StartOfTurn",
-            "effect": "GainGold",
-            "target": "Owner",
-            "costPerX": 0.05,
-            "flatCost": 0.25
-        },
-        {
-            "abilityId": "goldsteal",
-            "displayName": "Gold Steal",
-            "description": "Steal {X} gold from the enemy player at the start of your turn.",
-            "trigger": "StartOfTurn",
-            "effect": "StealGold",
-            "target": "Owner",
-            "costPerX": 0.05,
-            "flatCost": 0.25
-        }
-    ]
+  "abilities": [
+    {
+      "abilityId": "defend",
+      "displayName": "Defend",
+      "description": "Takes {X} less damage from attacks.",
+      "trigger": "OnDamaged",
+      "effect": "ReduceDamage",
+      "target": "Self",
+      "costPerX": 1.0,
+      "flatCost": 0.5
+    },
+    {
+      "abilityId": "thorns",
+      "displayName": "Thorns",
+      "description": "When attacked, deals {X} damage back to the attacker.",
+      "trigger": "OnDamaged",
+      "effect": "DealDamage",
+      "target": "Attacker",
+      "costPerX": 0.75,
+      "flatCost": 0.25
+    },
+    {
+      "abilityId": "bounty",
+      "displayName": "Bounty",
+      "description": "Gain {X} gold when this guy kills another guy.",
+      "trigger": "OnKill",
+      "effect": "GainGold",
+      "target": "Owner",
+      "costPerX": 0.05,
+      "flatCost": 0.25
+    },
+    {
+      "abilityId": "herodamage",
+      "displayName": "Hero Damage",
+      "description": "At the start of combat, deals {X} damage to the enemy player.",
+      "trigger": "StartOfCombat",
+      "effect": "DealDamage",
+      "target": "EnemyPlayer",
+      "costPerX": 1.0,
+      "flatCost": 0.25
+    },
+    {
+      "abilityId": "guydamage",
+      "displayName": "Guy Damage",
+      "description": "At the start of combat, deals {X} damage to a random enemy guy.",
+      "trigger": "StartOfCombat",
+      "effect": "DealDamage",
+      "target": "RandomEnemy",
+      "costPerX": 0.8,
+      "flatCost": 0.25
+    },
+    {
+      "abilityId": "heal",
+      "displayName": "Heal",
+      "description": "At the start of combat, restores {X} health to your guys in this lane.",
+      "trigger": "StartOfCombat",
+      "effect": "Heal",
+      "target": "AlliesInLane",
+      "costPerX": 0.75,
+      "flatCost": 0.25
+    },
+    {
+      "abilityId": "rob",
+      "displayName": "Rob",
+      "description": "When this guy damages the enemy player, steals {X} gold per damage dealt.",
+      "trigger": "OnAttack",
+      "effect": "StealGold",
+      "target": "Owner",
+      "costPerX": 0.05,
+      "flatCost": 0.25
+    },
+    {
+      "abilityId": "overkill",
+      "displayName": "Overkill",
+      "description": "Excess damage from this guy's attacks hits the enemy player.",
+      "trigger": "OnAttack",
+      "effect": "Overkill",
+      "target": "EnemyPlayer",
+      "costPerX": 0.5,
+      "flatCost": 0.5
+    },
+    {
+      "abilityId": "draw",
+      "displayName": "Draw",
+      "description": "When played, draw {X} card(s).",
+      "trigger": "OnPlay",
+      "effect": "DrawCard",
+      "target": "Owner",
+      "costPerX": 0.75,
+      "flatCost": 0.25
+    },
+    {
+      "abilityId": "pierce",
+      "displayName": "Pierce",
+      "description": "This guy's attacks hit every enemy guy in the lane.",
+      "trigger": "OnAttack",
+      "effect": "HitAllInLane",
+      "target": "EnemiesInLane",
+      "costPerX": 0.75,
+      "flatCost": 0.5
+    },
+    {
+      "abilityId": "precision",
+      "displayName": "Precision",
+      "description": "This guy attacks the enemy player directly.",
+      "trigger": "Passive",
+      "effect": "TargetPlayer",
+      "target": "Self",
+      "costPerX": 0.5,
+      "flatCost": 0.25
+    },
+    {
+      "abilityId": "growth",
+      "displayName": "Growth",
+      "description": "At the start of combat, permanently gains +{X}/+{X}.",
+      "trigger": "StartOfCombat",
+      "effect": "BuffStats",
+      "target": "Self",
+      "costPerX": 1.5,
+      "flatCost": 0.25
+    },
+    {
+      "abilityId": "doubletap",
+      "displayName": "Double Tap",
+      "description": "This guy attacks {X} extra time(s).",
+      "trigger": "Passive",
+      "effect": "ExtraAttack",
+      "target": "Self",
+      "costPerX": 1.5,
+      "flatCost": 0.5
+    },
+    {
+      "abilityId": "mending",
+      "displayName": "Mending",
+      "description": "Whenever this guy is healed, it permanently gains +{X}/+{X}.",
+      "trigger": "OnHealed",
+      "effect": "BuffStats",
+      "target": "Self",
+      "costPerX": 1.0,
+      "flatCost": 0.25
+    },
+    {
+      "abilityId": "regen",
+      "displayName": "Regen",
+      "description": "At the start of your turn, this guy heals {X}.",
+      "trigger": "StartOfTurn",
+      "effect": "Heal",
+      "target": "Self",
+      "costPerX": 1.0,
+      "flatCost": 0.25
+    },
+    {
+      "abilityId": "heroregen",
+      "displayName": "Hero Regen",
+      "description": "At the start of your turn, restore {X} health to your hero.",
+      "trigger": "StartOfTurn",
+      "effect": "Heal",
+      "target": "Owner",
+      "costPerX": 0.5,
+      "flatCost": 0.25
+    },
+    {
+      "abilityId": "goldgen",
+      "displayName": "Gold Gen",
+      "description": "Gain {X} gold at the start of your turn.",
+      "trigger": "StartOfTurn",
+      "effect": "GainGold",
+      "target": "Owner",
+      "costPerX": 0.05,
+      "flatCost": 0.25
+    },
+    {
+      "abilityId": "goldsteal",
+      "displayName": "Gold Steal",
+      "description": "Steal {X} gold from the enemy player at the start of your turn.",
+      "trigger": "StartOfTurn",
+      "effect": "StealGold",
+      "target": "Owner",
+      "costPerX": 0.05,
+      "flatCost": 0.25
+    },
+    {
+      "abilityId": "instakill",
+      "displayName": "Instakill",
+      "description": "Instantly kill the enemy guy this guy attacks.",
+      "trigger": "OnAttack",
+      "effect": "Instakill",
+      "target": "EnemiesInLane",
+      "costPerX": 0.5,
+      "flatCost": 0.5
+    }
+  ]
 }

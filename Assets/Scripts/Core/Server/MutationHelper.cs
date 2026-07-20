@@ -32,13 +32,24 @@ namespace Game.Core.Server
             }
 
             int healthBefore = damagedCard.CurrentHealth;
-            damagedCard.CurrentHealth = Math.Max(0, healthBefore - incomingDamage);
+            int healthAfter = Math.Max(0, healthBefore - incomingDamage);
+
+            // Instakill: any nonzero combat damage from this attacker is lethal,
+            // regardless of how much health the target had left.
+            bool instakill = AbilityRuntime.Sum(
+                attackingCard, AbilityTrigger.OnAttack, AbilityEffect.Instakill, AbilityTarget.EnemiesInLane) > 0;
+            if (instakill)
+            {
+                healthAfter = 0;
+            }
+
+            damagedCard.CurrentHealth = healthAfter;
             damagedCard.LastDamageWasCombatDamage = true;
             damagedCard.LastDamagerCardId = attackingCard.InstanceId;
 
             events.Add(new CardDamagedEvent(
                 damagedCard.InstanceId,
-                incomingDamage,
+                healthBefore - healthAfter,
                 damagedCard.CurrentHealth));
 
             // Thorns: reflect damage at the attacker. Dealt as direct (non-combat)

@@ -34,6 +34,7 @@ namespace Game.Core.Abilities
         ExtraAttack,    // this card attacks X extra times (double tap)
         TargetPlayer,   // this card attacks the enemy player directly, ignoring blockers (precision)
         ApplyStatus,    // add StatusId to the target's StatusEffects
+        Instakill,      // any nonzero combat damage this card deals is lethal (instakill)
     }
 
     /// <summary>Who an ability affects.</summary>
