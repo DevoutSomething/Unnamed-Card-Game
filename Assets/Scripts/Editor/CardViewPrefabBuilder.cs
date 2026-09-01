@@ -102,6 +102,11 @@ namespace Game.Cards.EditorTools {
                                       24, FontStyle.Bold, TextAnchor.MiddleCenter);
             view.HealthText.color = new Color(1f, 0.40f, 0.40f);
 
+            // Bounty sits between attack and health along the bottom edge.
+            view.KillGoldText = AddText(root, "KillGold", new Vector2(0.22f, 0.00f), new Vector2(0.78f, 0.11f),
+                                        13, FontStyle.Bold, TextAnchor.MiddleCenter);
+            view.KillGoldText.color = new Color(1f, 0.85f, 0.30f);
+
             // Border last so the frame draws on top of everything.
             view.BorderImage = AddImage(root, "Border", Vector2.zero, Vector2.one);
             return root;

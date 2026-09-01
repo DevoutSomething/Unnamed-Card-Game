@@ -3,7 +3,7 @@
   "type": "guy",
   "displayName": "Initiate",
   "energyCost": 4,
-  "goldCost": 0,
+  "goldCost": 25,
   "description": "Draw 2.",
   "rarity": "Rare",
   "archetypes": ["Mage", "Colorless"],

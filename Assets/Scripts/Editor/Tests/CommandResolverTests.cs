@@ -446,6 +446,33 @@ namespace Game.Core.Tests
         }
 
         [Test]
+        public void Shop_FillsEverySlot_EvenWhenFewerDistinctCardsExistThanSlots()
+        {
+            // Only 3 distinct non-Commons, but the shop still offers 10 —
+            // offers are drawn with replacement, so a small catalog repeats
+            // rather than silently under-filling the shop.
+            ConfigureShopCatalog(3);
+            var state = NewGame();
+            AdvanceToShop(state);
+
+            foreach (var p in state.Players)
+                Assert.AreEqual(10, p.ShopOffers.Count, $"P{p.Id} shop offers");
+        }
+
+        [Test]
+        public void Shop_OffersAreDistinctInstances_EvenWhenDefinitionsRepeat()
+        {
+            ConfigureShopCatalog(2);
+            var state = NewGame();
+            AdvanceToShop(state);
+            var offers = state.Players[0].ShopOffers;
+
+            var ids = offers.ConvertAll(c => c.InstanceId);
+            CollectionAssert.AllItemsAreUnique(ids,
+                "duplicate offers must still be separate instances, so buying one leaves the rest");
+        }
+
+        [Test]
         public void BuyCard_MovesOfferIntoDeckAndDeductsGold()
         {
             ConfigureShopCatalog();

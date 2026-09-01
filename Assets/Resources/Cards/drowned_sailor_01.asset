@@ -15,7 +15,7 @@ MonoBehaviour:
   CardId: drowned_sailor_01
   DisplayName: Drowned Sailor
   EnergyCost: 3
-  GoldCost: 0
+  GoldCost: 25
   Description: Aquatic.
   Rarity: 1
   Archetypes: 0100000000000000

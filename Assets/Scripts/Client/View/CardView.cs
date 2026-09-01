@@ -21,6 +21,7 @@ namespace Game.Client.View
         public Text DescriptionText;
         public Text AttackText;
         public Text HealthText;
+        public Text KillGoldText;
 
         /// <summary>
         /// Fill the visuals. def may be null (unknown id — shows the raw id),
@@ -41,7 +42,14 @@ namespace Game.Client.View
             HealthText.color = Color.white;
             if(isGuy && inst?.CurrentHealth < guy.BaseHealth)
                 HealthText.color = Color.red;
-            
+
+            // Bounty: gold the OPPONENT collects for killing this guy in combat
+            // (see CombatResolver.AwardDeathRewards) — not a price to buy it.
+            // Hidden entirely at 0, and on spells, which can't be killed.
+            int bounty = isGuy ? (inst?.KillRewardGold ?? guy.KillRewardGold) : 0;
+            SetText(KillGoldText, bounty > 0 ? $"BOUNTY {bounty}" : null);
+
+
             SetSprite(ArtImage, skin?.Art != null ? skin.Art.Image : null);
             SetSprite(BorderImage, skin?.Border != null ? skin.Border.Frame : null);
         }

@@ -21,13 +21,6 @@ namespace Game.Core.Server
         private const int ShopRemoveCostIncrement = 5;
         private const int ShopTimeLimitSeconds = 45; // easily changeable
 
-        // TEMP: there isn't enough non-Common card content yet to fill a real
-        // random pool (design_plan wants 10; only a handful exist so far), so
-        // for now every shop offer is just this one card — guarantees there's
-        // always something clickable to buy while more content gets authored.
-        // Remove this override (see GenerateShopOffers) once the pool's grown.
-        private const string TempShopPlaceholderCardId = "giantape_01"; // "Great Ape"
-
 
         public static List<GameEvent> Resolve(GameState state, Command cmd)
         {
@@ -462,25 +455,22 @@ namespace Game.Core.Server
         {
             player.ShopOffers.Clear();
 
-            // TEMP placeholder (see TempShopPlaceholderCardId) while the non-Common
-            // pool is still too small to fill 10 real random offers.
-            var placeholder = FindDefinition(TempShopPlaceholderCardId);
-            if (placeholder != null)
-            {
-                for (int i = 0; i < ShopOfferCount; i++)
-                    if (CardFactory.TryCreate(state, placeholder, player.Id, out var card, out _))
-                        CardZones.TryAdd(state, card, CardZone.Shop, events, out _);
-            }
-            else
-            {
-                var pool = new List<CardDefinition>();
-                foreach (var def in CardCatalogRuntime.Pool)
-                    if (def.Rarity != Rarity.Common)
-                        pool.Add(def);
+            var pool = new List<CardDefinition>();
+            foreach (var def in CardCatalogRuntime.Pool)
+                if (def.Rarity != Rarity.Common)
+                    pool.Add(def);
 
-                foreach (var def in state.Rng.PickN(pool, ShopOfferCount))
-                    if (CardFactory.TryCreate(state, def, player.Id, out var card, out _))
-                        CardZones.TryAdd(state, card, CardZone.Shop, events, out _);
+            // Drawn independently (with replacement) rather than via Rng.PickN:
+            // PickN only ever returns DISTINCT entries, and there are currently
+            // fewer distinct non-Commons authored than there are shop slots, so
+            // PickN would silently under-fill the shop. Duplicate offers are
+            // normal for a shop anyway, and this keeps every slot filled however
+            // small (or large) the pool grows.
+            for (int i = 0; i < ShopOfferCount && pool.Count > 0; i++)
+            {
+                var def = state.Rng.Pick(pool);
+                if (CardFactory.TryCreate(state, def, player.Id, out var card, out _))
+                    CardZones.TryAdd(state, card, CardZone.Shop, events, out _);
             }
 
             events.Add(new ShopRefreshedEvent(player.Id));

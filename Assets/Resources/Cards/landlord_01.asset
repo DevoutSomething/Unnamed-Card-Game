@@ -15,7 +15,7 @@ MonoBehaviour:
   CardId: landlord_01
   DisplayName: Landlord
   EnergyCost: 4
-  GoldCost: 0
+  GoldCost: 40
   Description: Steals 15 gold at the start of your turn.
   Rarity: 2
   Archetypes: 0300000000000000

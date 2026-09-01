@@ -3,7 +3,7 @@
     "type": "guy",
     "displayName": "Drowned Sailor",
     "energyCost": 3,
-    "goldCost": 0,
+    "goldCost": 25,
     "description": "Aquatic.",
     "rarity": "Rare",
     "archetypes": [

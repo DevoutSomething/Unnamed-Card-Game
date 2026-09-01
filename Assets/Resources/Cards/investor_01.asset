@@ -15,7 +15,7 @@ MonoBehaviour:
   CardId: investor_01
   DisplayName: Investor
   EnergyCost: 2
-  GoldCost: 0
+  GoldCost: 25
   Description: Gain 10 gold at the start of your turn.
   Rarity: 1
   Archetypes: 0300000000000000

@@ -15,7 +15,7 @@ MonoBehaviour:
   CardId: kraken_01
   DisplayName: Kraken
   EnergyCost: 5
-  GoldCost: 0
+  GoldCost: 40
   Description: Aquatic.
   Rarity: 2
   Archetypes: 0200000000000000

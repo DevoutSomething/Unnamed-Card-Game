@@ -3,7 +3,7 @@
     "type": "guy",
     "displayName": "Sneaky Little Guy",
     "energyCost": 3,
-    "goldCost": 0,
+    "goldCost": 40,
     "description": "Precision. Rob 10.",
     "rarity": "Epic",
     "archetypes": [

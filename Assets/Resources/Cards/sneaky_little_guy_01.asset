@@ -15,7 +15,7 @@ MonoBehaviour:
   CardId: sneaky_little_guy_01
   DisplayName: Sneaky Little Guy
   EnergyCost: 3
-  GoldCost: 0
+  GoldCost: 40
   Description: Precision. Rob 10.
   Rarity: 2
   Archetypes: 00000000
