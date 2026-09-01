@@ -70,6 +70,8 @@ namespace Game.Cards.EditorTools {
             public int minEnergyCost;
             public int maxEnergyCost;
             public int costReduction;
+            public int attackBonus;
+            public int healthBonus;
         }
 
         [Serializable]
@@ -214,6 +216,8 @@ namespace Game.Cards.EditorTools {
                 MinEnergyCost = conjure.minEnergyCost,
                 MaxEnergyCost = conjure.maxEnergyCost,
                 CostReduction = conjure.costReduction,
+                AttackBonus = conjure.attackBonus,
+                HealthBonus = conjure.healthBonus,
             };
 
             if (def is GuyCardDefinition guy) {

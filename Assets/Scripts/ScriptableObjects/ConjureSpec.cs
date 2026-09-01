@@ -62,6 +62,14 @@ namespace Game.Cards {
         [Tooltip("Energy knocked off the conjured card's cost, floored at 0.")]
         public int CostReduction;
 
+        [Header("Applied to each conjured card")]
+        [Tooltip("Attack bonus for the conjured card, floored at 0.")]
+        public int AttackBonus;
+
+        [Header("Applied to each conjured card")]
+        [Tooltip("Health bonus for the conjured card, floored at 0.")]
+        public int HealthBonus;
+
         /// <summary>True if this spec actually produces anything.</summary>
         public bool Conjures => Count > 0;
 

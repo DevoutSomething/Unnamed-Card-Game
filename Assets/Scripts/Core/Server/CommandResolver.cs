@@ -794,15 +794,26 @@ namespace Game.Core.Server
 
             for (int i = 0; i < spec.Count; i++)
             {
-                // Same ceiling a draw respects — conjuring can't overflow a full hand.
                 if (player.cardsInHand.Count >= MaxHandSize) return;
 
                 var chosen = state.Rng.Pick(candidates);
                 if (!CardFactory.TryCreate(state, chosen, player.Id, out var card, out _)) continue;
 
                 if (spec.CostReduction > 0)
-                    card.CurrentCost = Math.Max(0, card.CurrentCost - spec.CostReduction);
+                {
+                    card.CurrentCost = Math.Max(0, card.CurrentCost - spec.CostReduction);                    
+                }
 
+                if (spec.AttackBonus > 0)
+                {
+                    card.CurrentAttack = Math.Max(0, card.CurrentAttack + spec.AttackBonus);
+                }
+
+                if (spec.HealthBonus > 0)
+                {
+                    card.MaxHealth = Math.Max(0, card.MaxHealth + spec.HealthBonus);
+                }
+                
                 player.cardsInHand.Add(card);
                 events.Add(new CardConjuredEvent(
                     player.Id, card.InstanceId, card.DefinitionId, card.CurrentCost));
