@@ -1,0 +1,20 @@
+{
+  "cardId": "conjurer_01",
+  "type": "guy",
+  "displayName": "Conjurer",
+  "energyCost": 2,
+  "goldCost": 40,
+  "description": "On play: conjure a random guy that costs 1 less.",
+  "rarity": "Epic",
+  "archetypes": ["Mage"],
+  "tags": [],
+  "baseAttack": 1,
+  "baseHealth": 1,
+  "abilities": [],
+  "killRewardGold": 20,
+  "conjure": {
+    "count": 1,
+    "kind": "Guy",
+    "costReduction": 1
+  }
+}

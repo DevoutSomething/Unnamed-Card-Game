@@ -56,6 +56,22 @@ namespace Game.Cards.EditorTools {
             public int x = 1;
         }
 
+        /// <summary>Mirrors ConjureSpec. `count` defaults to 0 so a card whose
+        /// JSON omits the whole block simply doesn't conjure.</summary>
+        [Serializable]
+        public class ConjureJson {
+            public int count;
+            public string kind = "Any";
+            public string rarityFilter = "Any";
+            public string rarity = "Common";
+            public List<string> archetypes = new();
+            public List<string> requiredTags = new();
+            public bool filterByEnergyCost;
+            public int minEnergyCost;
+            public int maxEnergyCost;
+            public int costReduction;
+        }
+
         [Serializable]
         public class CardJson {
             public string cardId;
@@ -71,6 +87,8 @@ namespace Game.Cards.EditorTools {
             public int baseHealth = 1;
             public List<AbilityRefJson> abilities = new();
             public int killRewardGold;
+
+            public ConjureJson conjure = new();
 
             // Spell-only. Ignored on guys.
             public string spellTarget = "None";
@@ -181,6 +199,22 @@ namespace Game.Cards.EditorTools {
                 .Select(a => ParseEnum(a, Archetype.Colorless, dto.cardId, "archetype"))
                 .ToList();
             def.Tags = new List<string>(dto.tags);
+
+            var conjure = dto.conjure ?? new ConjureJson();
+            def.Conjure = new ConjureSpec {
+                Count = conjure.count,
+                Kind = ParseEnum(conjure.kind, ConjureKind.Any, dto.cardId, "conjure.kind"),
+                RarityFilter = ParseEnum(conjure.rarityFilter, ConjureRarityFilter.Any, dto.cardId, "conjure.rarityFilter"),
+                Rarity = ParseEnum(conjure.rarity, Rarity.Common, dto.cardId, "conjure.rarity"),
+                Archetypes = conjure.archetypes
+                    .Select(a => ParseEnum(a, Archetype.Colorless, dto.cardId, "conjure.archetype"))
+                    .ToList(),
+                RequiredTags = new List<string>(conjure.requiredTags),
+                FilterByEnergyCost = conjure.filterByEnergyCost,
+                MinEnergyCost = conjure.minEnergyCost,
+                MaxEnergyCost = conjure.maxEnergyCost,
+                CostReduction = conjure.costReduction,
+            };
 
             if (def is GuyCardDefinition guy) {
                 guy.BaseAttack = dto.baseAttack;
@@ -300,6 +334,20 @@ namespace Game.Cards.EditorTools {
                     archetypes = def.Archetypes.Select(a => a.ToString()).ToList(),
                     tags = new List<string>(def.Tags),
                 };
+                if (def.Conjure != null) {
+                    dto.conjure = new ConjureJson {
+                        count = def.Conjure.Count,
+                        kind = def.Conjure.Kind.ToString(),
+                        rarityFilter = def.Conjure.RarityFilter.ToString(),
+                        rarity = def.Conjure.Rarity.ToString(),
+                        archetypes = def.Conjure.Archetypes.Select(a => a.ToString()).ToList(),
+                        requiredTags = new List<string>(def.Conjure.RequiredTags),
+                        filterByEnergyCost = def.Conjure.FilterByEnergyCost,
+                        minEnergyCost = def.Conjure.MinEnergyCost,
+                        maxEnergyCost = def.Conjure.MaxEnergyCost,
+                        costReduction = def.Conjure.CostReduction,
+                    };
+                }
                 if (def is GuyCardDefinition guy) {
                     dto.baseAttack = guy.BaseAttack;
                     dto.baseHealth = guy.BaseHealth;

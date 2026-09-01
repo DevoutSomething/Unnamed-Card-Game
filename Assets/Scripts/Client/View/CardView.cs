@@ -43,9 +43,6 @@ namespace Game.Client.View
             if(isGuy && inst?.CurrentHealth < guy.BaseHealth)
                 HealthText.color = Color.red;
 
-            // Bounty: gold the OPPONENT collects for killing this guy in combat
-            // (see CombatResolver.AwardDeathRewards) — not a price to buy it.
-            // Hidden entirely at 0, and on spells, which can't be killed.
             int bounty = isGuy ? (inst?.KillRewardGold ?? guy.KillRewardGold) : 0;
             SetText(EnsureKillGoldText(), bounty > 0 ? $"BOUNTY {bounty}" : null);
 

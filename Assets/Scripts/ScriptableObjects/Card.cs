@@ -33,6 +33,14 @@ namespace Game.Cards {
                  "can require these to decide what is valid for this card.")]
         public List<string> Tags = new();
 
+        [Header("Conjure")]
+        [Tooltip("Fires when this card is played (a guy entering a lane) or cast (a spell " +
+                 "resolving). Count 0 = this card doesn't conjure.")]
+        public ConjureSpec Conjure = new();
+
+        /// <summary>True if playing/casting this card spawns cards in hand.</summary>
+        public bool Conjures => Conjure != null && Conjure.Conjures;
+
         public bool HasTag(string tag) => Tags != null && Tags.Contains(tag);
     }
 

@@ -11,6 +11,10 @@ namespace Game.Core.Events
 
     public record CardDrawnEvent(int PlayerId, int CardInstanceId) : GameEvent;
     public record SpellCastEvent(int PlayerId, int CardInstanceId, int TargetCardInstanceId, int TargetPlayerId) : GameEvent;
+
+    /// <summary>A card spawned directly into hand from the catalog — distinct
+    /// from CardDrawnEvent, which takes one off the top of the owner's deck.</summary>
+    public record CardConjuredEvent(int PlayerId, int CardInstanceId, string DefinitionId, int Cost) : GameEvent;
     public record CardPlayedEvent(int PlayerId, int CardInstanceId, int LaneIndex, int SlotIndex) : GameEvent;
     public record CardDiedEvent(int CardInstanceId, int LaneIndex, int SlotIndex, int KillerId) : GameEvent;
     public record CardMovedEvent(int CardInstanceId, int FromLane, int FromSlot, int ToLane, int ToSlot) : GameEvent;

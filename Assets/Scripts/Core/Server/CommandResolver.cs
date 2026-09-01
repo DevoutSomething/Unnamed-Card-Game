@@ -276,6 +276,8 @@ namespace Game.Core.Server
                     DrawCard(state, player, events);
                 }
             }
+
+            ApplyConjure(state, player, FindDefinition(card.DefinitionId), events);
         }
 
         // ---------------------------------------------------------------
@@ -340,6 +342,8 @@ namespace Game.Core.Server
             {
                 DrawCard(state, player, events);
             }
+
+            ApplyConjure(state, player, def, events);
 
             // A spell can kill a guy outright, so sweep before anyone reads the
             // board again. Awards no kill gold, by ClearDeadInLane's contract.
@@ -763,6 +767,46 @@ namespace Game.Core.Server
             }
 
             events.Add(new ShopRefreshedEvent(player.Id));
+        }
+
+        /// <summary>
+        /// Spawns this card's conjures into the player's hand. Conjured cards
+        /// are built fresh from the catalog and never touch the deck — they
+        /// aren't drawn, and playing or discarding one doesn't put it back.
+        ///
+        /// Drawn WITH replacement: "conjure 3 random spells" can legitimately
+        /// roll the same spell twice.
+        /// </summary>
+        private static void ApplyConjure(
+            GameState state, Player player, CardDefinition source, List<GameEvent> events)
+        {
+            if (source == null || !source.Conjures) return;
+
+            var spec = source.Conjure;
+
+            var candidates = new List<CardDefinition>();
+            foreach (var candidate in CardCatalogRuntime.Pool)
+                if (spec.Matches(candidate)) candidates.Add(candidate);
+
+            // A filter nothing in the catalog satisfies conjures nothing, rather
+            // than falling back to a random card the author didn't ask for.
+            if (candidates.Count == 0) return;
+
+            for (int i = 0; i < spec.Count; i++)
+            {
+                // Same ceiling a draw respects — conjuring can't overflow a full hand.
+                if (player.cardsInHand.Count >= MaxHandSize) return;
+
+                var chosen = state.Rng.Pick(candidates);
+                if (!CardFactory.TryCreate(state, chosen, player.Id, out var card, out _)) continue;
+
+                if (spec.CostReduction > 0)
+                    card.CurrentCost = Math.Max(0, card.CurrentCost - spec.CostReduction);
+
+                player.cardsInHand.Add(card);
+                events.Add(new CardConjuredEvent(
+                    player.Id, card.InstanceId, card.DefinitionId, card.CurrentCost));
+            }
         }
 
         private static CardDefinition FindDefinition(string cardId)
