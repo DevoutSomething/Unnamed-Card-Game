@@ -130,6 +130,35 @@ namespace Game.Core.Server
             events.Add(new CardBuffedEvent(card.InstanceId, amount, amount));
         }
 
+        /// <summary>
+        /// A permanent, asymmetric, possibly-NEGATIVE stat change — what lane
+        /// modifiers apply on entry. Differs from BuffStats in three ways that
+        /// matter: attack and health move independently (+0/+2), negatives are
+        /// allowed, and MaxHealth moves with CurrentHealth so a debuff can't
+        /// simply be healed off.
+        ///
+        /// A guy reduced to 0 health is LEFT at 0 for the caller to sweep (see
+        /// CombatResolver.ClearDeadInLane) rather than dying here: nothing
+        /// killed it in combat, so it must not pay out kill gold.
+        /// </summary>
+        public static void ApplyStatModifier(
+            CardInstance card, int attackDelta, int healthDelta, List<GameEvent> events)
+        {
+            if (card == null || (attackDelta == 0 && healthDelta == 0)) return;
+
+            int attackBefore = card.CurrentAttack;
+            int healthBefore = card.CurrentHealth;
+
+            card.CurrentAttack = Math.Max(0, card.CurrentAttack + attackDelta);
+            card.MaxHealth = Math.Max(1, card.MaxHealth + healthDelta);
+            card.CurrentHealth = Math.Max(0, card.CurrentHealth + healthDelta);
+
+            events.Add(new CardBuffedEvent(
+                card.InstanceId,
+                card.CurrentAttack - attackBefore,
+                card.CurrentHealth - healthBefore));
+        }
+
         /// <summary>Move gold from victim to thief, capped by what the victim has.</summary>
         public static void StealGold(Player thief, Player victim, int amount, List<GameEvent> events)
         {

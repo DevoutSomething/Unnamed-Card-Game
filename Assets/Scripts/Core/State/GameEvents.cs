@@ -25,6 +25,9 @@ namespace Game.Core.Events
     public record CombatResolvedEvent(int LaneIndex) : GameEvent;
     public record EventTriggeredEvent(string EventId) : GameEvent;
 
+    public record LaneAssignedEvent(int LaneIndex, string LaneTypeId) : GameEvent;
+    public record LaneEffectTriggeredEvent(int LaneIndex, string LaneTypeId) : GameEvent;
+
     public record ShopRefreshedEvent(int PlayerId) : GameEvent;
     public record CardGrantedEvent(int PlayerId, int CardInstanceId, string DefinitionId, string Zone) : GameEvent;
     public record CardBoughtEvent(int PlayerId, int CardInstanceId, int Cost) : GameEvent;

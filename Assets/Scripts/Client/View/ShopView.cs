@@ -37,10 +37,6 @@ namespace Game.Client.View
         /// Remove button.</summary>
         const float DeckCellButtonBand = 40f;
 
-        /// <summary>Hover preview size. Bigger than a full-size card so it reads
-        /// clearly against the shrunken grid cells behind it.</summary>
-        const float PreviewScale = 1.15f;
-
         // Must match CommandResolver's ShopRemoveBaseCost/ShopRemoveCostIncrement —
         // duplicated here only for a live cost-preview label; the server is the
         // sole source of truth and re-validates on every RemoveCardFromDeckCommand.
@@ -69,8 +65,7 @@ namespace Game.Client.View
         readonly Button[] _hotSeatButtons = new Button[2];
         readonly Text[] _hotSeatLabels = new Text[2];
 
-        RectTransform _canvasRect;
-        RectTransform _previewRoot;
+        readonly CardPreviewLayer _preview = new CardPreviewLayer();
 
         // ------------------------------------------------------------------
         // Build (once)
@@ -103,9 +98,7 @@ namespace Game.Client.View
 
             // Built last so it's the final sibling — the hover preview floats
             // above the offers grid AND the deck panel alike.
-            _canvasRect = (RectTransform)canvasGo.transform;
-            _previewRoot = AddRect(canvasGo.transform, "HoverPreview", Vector2.zero, Vector2.one);
-            _previewRoot.gameObject.SetActive(false);
+            _preview.Build(canvasGo.transform, _db, _skins);
 
             _canvasRoot.SetActive(false);
         }
@@ -147,7 +140,7 @@ namespace Game.Client.View
         void SetDeckPanelOpen(bool open)
         {
             _deckPanelRoot.SetActive(open);
-            HidePreview();   // the cells behind/in front of it just changed
+            _preview.Hide();   // the cells behind/in front of it just changed
         }
 
         void BuildHeader(Transform canvas)
@@ -275,70 +268,7 @@ namespace Game.Client.View
             bool wasVisible = _canvasRoot.activeSelf;
             _canvasRoot.SetActive(visible);
             if (visible && !wasVisible) SetDeckPanelOpen(false);
-            if (!visible) HidePreview();
-        }
-
-        // ------------------------------------------------------------------
-        // Hover preview
-        // ------------------------------------------------------------------
-
-        /// <summary>Floats an enlarged copy of the hovered card above the grid.
-        /// The copy is spawned through the normal CardViewFactory, so it shows
-        /// exactly what the small cell shows (bounty included), just legibly.</summary>
-        void ShowPreview(CardInstance card, RectTransform sourceCell)
-        {
-            ClearChildren(_previewRoot);
-            if (card == null) return;
-
-            var view = CardViewFactory.Spawn(card, _previewRoot, _db, _skins);
-            if (view == null) return;
-
-            var rect = (RectTransform)view.transform;
-            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = new Vector2(CardW, CardH);
-            rect.localScale = new Vector3(PreviewScale, PreviewScale, 1f);
-            rect.anchoredPosition = PreviewPosition(sourceCell);
-
-            // The preview must never eat the pointer — hovering it would fire
-            // OnPointerExit on the cell underneath and flicker it away.
-            foreach (var graphic in _previewRoot.GetComponentsInChildren<Graphic>(true))
-                graphic.raycastTarget = false;
-
-            _previewRoot.gameObject.SetActive(true);
-        }
-
-        void HidePreview()
-        {
-            if (_previewRoot == null) return;
-            ClearChildren(_previewRoot);
-            _previewRoot.gameObject.SetActive(false);
-        }
-
-        /// <summary>Centres the preview on the hovered cell, nudged up so it
-        /// doesn't sit under the cursor, then clamped so a card hovered at the
-        /// screen edge still shows in full.</summary>
-        Vector2 PreviewPosition(RectTransform sourceCell)
-        {
-            float w = CardW * PreviewScale;
-            float h = CardH * PreviewScale;
-
-            Vector2 local = Vector2.zero;
-            if (sourceCell != null)
-            {
-                Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(null, sourceCell.position);
-                RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                    _canvasRect, screenPoint, null, out local);
-            }
-
-            local.y += h * 0.30f;
-
-            Vector2 canvasSize = _canvasRect.rect.size;
-            float maxX = Mathf.Max(0f, (canvasSize.x - w) * 0.5f);
-            float maxY = Mathf.Max(0f, (canvasSize.y - h) * 0.5f);
-            local.x = Mathf.Clamp(local.x, -maxX, maxX);
-            local.y = Mathf.Clamp(local.y, -maxY, maxY);
-            return local;
+            if (!visible) _preview.Hide();
         }
 
         // ------------------------------------------------------------------
@@ -371,7 +301,7 @@ namespace Game.Client.View
 
             // Every cell is about to be torn down and respawned, so any preview
             // anchored to one of them is already stale.
-            HidePreview();
+            _preview.Hide();
 
             UpdateTimerLabel(state);
             _goldLabel.text = $"GOLD {player.Gold}";
@@ -466,16 +396,12 @@ namespace Game.Client.View
         /// optional corner tag.</summary>
         GameObject MakeCardCell(Transform parent, CardInstance card, string tag, Color tagColor)
         {
-            var wrapper = new GameObject("Cell",
-                typeof(RectTransform), typeof(Image), typeof(Button), typeof(CardHoverTarget));
+            var wrapper = new GameObject("Cell", typeof(RectTransform), typeof(Image), typeof(Button));
             var rect = (RectTransform)wrapper.transform;
             rect.SetParent(parent, false);
             wrapper.GetComponent<Image>().color = new Color(0, 0, 0, 0.3f);
 
-            var hover = wrapper.GetComponent<CardHoverTarget>();
-            hover.Card = card;
-            hover.HoverEnter = ShowPreview;
-            hover.HoverExit = HidePreview;
+            _preview.Attach(wrapper, card);
 
             if (!string.IsNullOrEmpty(tag))
             {

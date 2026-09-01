@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Game.Cards;
+using Game.Core.Lanes;
 using Game.Core.State;
 using UnityEngine;
 using UnityEngine.UI;
@@ -50,6 +51,12 @@ namespace Game.Client.View
         // Drop preview: the one slot a dragged hand card would land in if released now.
         static readonly Color DropPreviewColor = new Color(1f, 0.95f, 0.4f, 0.55f);
 
+        // Lane banner: sits between the two sides, since a lane effect is
+        // neutral ground that hits both players equally. Plain lanes keep the
+        // faint divider look the board always had.
+        static readonly Color LaneEffectColor = new Color(0.42f, 0.32f, 0.72f, 0.90f);
+        static readonly Color LanePlainColor = new Color(1f, 1f, 1f, 0.25f);
+
         GameController _controller;
         CardDatabase _db;
         CardSkinLibrary _skins;
@@ -70,6 +77,9 @@ namespace Game.Client.View
         RectTransform[,,] _slotContainers;
         RectTransform[,,] _cardHolders;
         Image[,,] _dropPreviewOverlays;
+        Image[] _laneBanners;
+        Text[] _laneNameLabels;
+        Text[] _laneDescLabels;
         Image _activeDropPreview;
         GameState _lastState;
         int _lastViewerPlayerId;
@@ -79,6 +89,10 @@ namespace Game.Client.View
         GameObject _gameOverOverlay;
         Text _gameOverLabel;
         GameObject _canvasRoot;
+
+        // Hovering any card — in hand or deployed in a lane — floats an
+        // enlarged copy of it. Same layer type the shop uses.
+        readonly CardPreviewLayer _preview = new CardPreviewLayer();
 
         // ------------------------------------------------------------------
         // Build (once)
@@ -93,6 +107,9 @@ namespace Game.Client.View
             _slotContainers = new RectTransform[laneCount, 2, slotsPerSide];
             _cardHolders = new RectTransform[laneCount, 2, slotsPerSide];
             _dropPreviewOverlays = new Image[laneCount, 2, slotsPerSide];
+            _laneBanners = new Image[laneCount];
+            _laneNameLabels = new Text[laneCount];
+            _laneDescLabels = new Text[laneCount];
 
             var canvasGo = new GameObject("BoardCanvas",
                 typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
@@ -114,6 +131,7 @@ namespace Game.Client.View
             BuildLanes(canvasGo.transform, laneCount, slotsPerSide);
             BuildHandStrip(canvasGo.transform);
             BuildEndPhaseButton(canvasGo.transform);
+            _preview.Build(canvasGo.transform, _db, _skins);   // above the board, below game-over
             BuildGameOverOverlay(canvasGo.transform);   // last = drawn on top
         }
 
@@ -177,8 +195,11 @@ namespace Game.Client.View
         void BuildLanes(Transform canvas, int laneCount, int slotsPerSide)
         {
             float slotW = CardW * SlotScale, slotH = CardH * SlotScale;   // 120 x 168
-            float colW = slotW + 30f;
-            float colH = slotsPerSide * 2 * slotH + 8f + 6f * (slotsPerSide * 2) + 12f;
+            // Wider than the cards need: the lane banner between the two sides
+            // carries the effect text, and there's plenty of horizontal room.
+            float colW = slotW + 70f;
+            float bannerH = 44f;
+            float colH = slotsPerSide * 2 * slotH + bannerH + 6f * (slotsPerSide * 2) + 12f;
 
             var lanesRoot = AddRect(canvas, "Lanes", new Vector2(0.5f, 0.58f), new Vector2(0.5f, 0.58f));
             lanesRoot.sizeDelta = new Vector2(laneCount * colW + (laneCount - 1) * 18f, colH);
@@ -215,10 +236,7 @@ namespace Game.Client.View
                     _slotContainers[lane, 1, slot] = AddSlot(colRect, $"Far_Slot{slot}", slotW, slotH, lane, slot,
                         out _cardHolders[lane, 1, slot], out _dropPreviewOverlays[lane, 1, slot]);
 
-                var divider = AddRect(colRect, "Divider", Vector2.zero, Vector2.zero);
-                divider.sizeDelta = new Vector2(colW - 16f, 8f);
-                divider.gameObject.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0.25f);
-                divider.gameObject.AddComponent<LayoutElement>().preferredHeight = 8f;
+                AddLaneBanner(colRect, colW - 16f, bannerH, lane);
 
                 // Near row (bottom of screen, the viewer's own side): front
                 // slot faces the middle.
@@ -226,6 +244,33 @@ namespace Game.Client.View
                     _slotContainers[lane, 0, slot] = AddSlot(colRect, $"Near_Slot{slot}", slotW, slotH, lane, slot,
                         out _cardHolders[lane, 0, slot], out _dropPreviewOverlays[lane, 0, slot]);
             }
+        }
+
+        /// <summary>
+        /// The lane's "location" plate, dividing the two sides: effect name on
+        /// top, rules text under it. Replaces the plain divider the board used
+        /// to have — a lane with no effect just renders as that faint bar again.
+        /// </summary>
+        void AddLaneBanner(Transform column, float w, float h, int laneIndex)
+        {
+            var rect = AddRect(column, "LaneBanner", Vector2.zero, Vector2.zero);
+            rect.sizeDelta = new Vector2(w, h);
+            _laneBanners[laneIndex] = rect.gameObject.AddComponent<Image>();
+
+            var layout = rect.gameObject.AddComponent<LayoutElement>();
+            layout.preferredWidth = w;
+            layout.preferredHeight = h;
+
+            _laneNameLabels[laneIndex] = AddLabel(rect, "LaneName",
+                new Vector2(0, 0.50f), new Vector2(1, 1f), 12, TextAnchor.LowerCenter);
+            _laneNameLabels[laneIndex].fontStyle = FontStyle.Bold;
+
+            _laneDescLabels[laneIndex] = AddLabel(rect, "LaneDesc",
+                new Vector2(0, 0f), new Vector2(1, 0.50f), 10, TextAnchor.UpperCenter);
+            // Rules text is the one label on the board that must wrap rather
+            // than run off the side of its lane.
+            _laneDescLabels[laneIndex].horizontalOverflow = HorizontalWrapMode.Wrap;
+            _laneDescLabels[laneIndex].color = new Color(1f, 1f, 1f, 0.85f);
         }
 
         /// <summary>
@@ -345,6 +390,7 @@ namespace Game.Client.View
             _lastState = state;
             _lastViewerPlayerId = viewerPlayerId;
             ClearDropPreview();   // slots are about to be rebuilt/retinted from scratch
+            _preview.Hide();      // whatever it was anchored to is about to change
 
             int opponentId = 1 - viewerPlayerId;
             bool viewerActive = state.CurrentSlotType == SlotType.Action && state.ActivePlayerId == viewerPlayerId;
@@ -359,6 +405,7 @@ namespace Game.Client.View
                 RedrawSublane(state.Lanes[lane].SublaneOf(opponentId), lane, screenRow: 1, opponentTint);
             }
 
+            RedrawLaneBanners(state);
             RedrawHand(state, viewerPlayerId);
             RedrawLabels(state, viewerPlayerId, viewerActive, opponentActive);
             RedrawGameOver(state, viewerPlayerId);
@@ -412,11 +459,31 @@ namespace Game.Client.View
                 ClearChildren(cardHolder);
 
                 var card = sublane.Slots[slot];
+
+                // Slot containers persist across redraws, so this just points
+                // the existing hover target at whatever occupies the slot now —
+                // null for an empty slot, which previews nothing.
+                _preview.Attach(_slotContainers[lane, screenRow, slot].gameObject, card);
+
                 if (card == null) continue;
 
                 var view = CardViewFactory.Spawn(card, cardHolder, _db, _skins);
                 if (view == null) continue;
                 PlaceCardView(view, SlotScale);
+            }
+        }
+
+        /// <summary>Lane effects are read straight off replicated state
+        /// (Lane.LaneTypeId), so both players always see the same board.</summary>
+        void RedrawLaneBanners(GameState state)
+        {
+            for (int lane = 0; lane < _laneBanners.Length && lane < state.Lanes.Length; lane++)
+            {
+                var def = LaneCatalog.Get(state.Lanes[lane].LaneTypeId);
+
+                _laneBanners[lane].color = def != null ? LaneEffectColor : LanePlainColor;
+                _laneNameLabels[lane].text = def != null ? def.DisplayName.ToUpperInvariant() : "";
+                _laneDescLabels[lane].text = def != null ? def.Description : "";
             }
         }
 
@@ -453,6 +520,8 @@ namespace Game.Client.View
                 drag.Card = card;
                 drag.Controller = _controller;
                 drag.HandRoot = _handRoot;
+
+                _preview.Attach(wrapper, card);
 
                 var view = CardViewFactory.Spawn(card, rect, _db, _skins);
                 if (view != null) PlaceCardView(view, HandScale);
@@ -494,7 +563,13 @@ namespace Game.Client.View
             }
         }
 
-        public void SetHandDragInProgress(bool inProgress) => _handDragInProgress = inProgress;
+        public void SetHandDragInProgress(bool inProgress)
+        {
+            _handDragInProgress = inProgress;
+            // A giant preview pinned under the cursor is only ever in the way
+            // while you're aiming a card at a lane.
+            _preview.SetSuppressed(inProgress);
+        }
 
         /// <summary>Center a spawned CardView in its container at the given scale.</summary>
         static void PlaceCardView(CardView view, float scale)

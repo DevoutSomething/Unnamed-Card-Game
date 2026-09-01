@@ -4,6 +4,7 @@ using Game.Cards;
 using Game.Core.Abilities;
 using Game.Core.Commands;
 using Game.Core.Events;
+using Game.Core.Lanes;
 using Game.Core.State;
 
 namespace Game.Core.Server
@@ -20,6 +21,10 @@ namespace Game.Core.Server
         private const int ShopRemoveBaseCost = 5;
         private const int ShopRemoveCostIncrement = 5;
         private const int ShopTimeLimitSeconds = 45; // easily changeable
+
+        /// <summary>How many lanes start the match with a lane effect. The rest
+        /// stay plain. Bump this to see more lane types per game.</summary>
+        private const int SpecialLanesAtStart = 2;
 
 
         public static List<GameEvent> Resolve(GameState state, Command cmd)
@@ -69,10 +74,59 @@ namespace Game.Core.Server
                 }
             }
 
+            AssignRandomLaneTypes(state, events);
+
             state.SlotIndex = 0;
             state.RotationIndex = 0;
             EmitSlotChanged(state, events);
             ApplyStartOfTurn(state, events);   // P0's first turn begins here
+        }
+
+        /// <summary>
+        /// Deals lane effects onto random lanes at match start — distinct types,
+        /// drawn from state.Rng so one seed reproduces the whole board.
+        ///
+        /// Runs AFTER decks are built and dealt deliberately: consuming rng
+        /// earlier would shift every existing seed's shuffle.
+        /// </summary>
+        private static void AssignRandomLaneTypes(GameState state, List<GameEvent> events)
+        {
+            if (state.Lanes.Length == 0) return;
+
+            var laneIndices = new List<int>();
+            for (int i = 0; i < state.Lanes.Length; i++) laneIndices.Add(i);
+
+            var chosenLanes = state.Rng.PickN(laneIndices, SpecialLanesAtStart);
+            var definitions = LaneCatalog.PickDistinct(state.Rng, chosenLanes.Count);
+
+            for (int i = 0; i < chosenLanes.Count && i < definitions.Count; i++)
+            {
+                ApplyLaneTypeTo(state.Lanes[chosenLanes[i]], definitions[i], events);
+            }
+        }
+
+        /// <summary>
+        /// Gives a lane its effect, and applies any stat modifier to the guys
+        /// already standing there. That last part is a no-op on the empty
+        /// opening board, but it's what makes this correct for the eventual
+        /// event-card path — public precisely because that's the entry point an
+        /// event card (or a guy that terraforms a lane) will call.
+        /// </summary>
+        public static void ApplyLaneTypeTo(Lane lane, LaneDefinition def, List<GameEvent> events)
+        {
+            if (lane == null || def == null) return;
+
+            lane.LaneTypeId = def.Id;
+            events.Add(new LaneAssignedEvent(lane.Position, def.Id));
+
+            if (!def.HasStatModifier) return;
+
+            foreach (var sublane in new[] { lane.P1, lane.P2 })
+                foreach (var card in sublane.Slots)
+                    if (card != null && card.CurrentHealth > 0)
+                        MutationHelper.ApplyStatModifier(card, def.AttackModifier, def.HealthModifier, events);
+
+            CombatResolver.ClearDeadInLane(lane, events);
         }
 
         /// <summary>
@@ -83,6 +137,16 @@ namespace Game.Core.Server
         /// </summary>
         private static void BuildStarterDeck(GameState state, Player player)
         {
+            // No configured catalog (logic tests, headless tools): the vanilla
+            // stat-line deck, as this method's summary has always claimed.
+            // Without this the pool is empty and every player starts with no
+            // deck and no hand at all.
+            if (!CardCatalogRuntime.IsConfigured)
+            {
+                BuildTestDeck(state, player);
+                return;
+            }
+
             // Starter decks deal "basic commons" only (game_plan) — rarer cards
             // will come from the shop/rewards once those exist.
             var guys = new List<CardDefinition>();
@@ -131,7 +195,8 @@ namespace Game.Core.Server
                 return;
             }
 
-            if (!state.IsMainActionSlot && IsGuyCard(card))
+            bool isGuy = IsGuyCard(card);
+            if (!state.IsMainActionSlot && isGuy)
             {
                 events.Add(new CommandRejectedEvent(cmd, "guys can only be played on your first action slot each cycle — this is a bonus, spell-only slot"));
                 return;
@@ -159,12 +224,33 @@ namespace Game.Core.Server
             player.cardsInHand.Remove(card);
             events.AddRange(placement);
 
+            // Lane effects hit the guy that just arrived. Guys only: a spell has
+            // no stat line to modify, and "play a guy here" means a guy.
+            var laneDef = LaneCatalog.Get(state.Lanes[cmd.LaneIndex].LaneTypeId);
+            if (laneDef != null && isGuy && laneDef.HasStatModifier)
+            {
+                MutationHelper.ApplyStatModifier(
+                    card, laneDef.AttackModifier, laneDef.HealthModifier, events);
+                // A 1-health guy walking into a -1/-1 lane dies on arrival
+                // rather than loitering at 0 health until the next combat.
+                CombatResolver.ClearDeadInLane(state.Lanes[cmd.LaneIndex], events);
+            }
+
             // OnPlay abilities. Only card draw exists so far (Initiate).
             int draws = AbilityRuntime.Sum(
                 card, AbilityTrigger.OnPlay, AbilityEffect.DrawCard, AbilityTarget.Owner);
             for (int i = 0; i < draws; i++)
             {
                 DrawCard(state, player, events);
+            }
+
+            if (laneDef != null && isGuy && laneDef.DrawOnGuyPlayed > 0)
+            {
+                events.Add(new LaneEffectTriggeredEvent(cmd.LaneIndex, laneDef.Id));
+                for (int i = 0; i < laneDef.DrawOnGuyPlayed; i++)
+                {
+                    DrawCard(state, player, events);
+                }
             }
         }
 
@@ -425,6 +511,33 @@ namespace Game.Core.Server
                 {
                     DrawCard(state, player, events);
                 }
+            }
+
+            ApplyLaneEnergyResetEffects(state, events);
+        }
+
+        /// <summary>
+        /// Lane hazards that fire when an energy block begins (i.e. just after
+        /// each combat): damage to every guy in the lane, both sides. Dealt as
+        /// DIRECT damage, so it provokes no thorns and pays out no kill gold —
+        /// the lane isn't a guy attacking.
+        /// </summary>
+        private static void ApplyLaneEnergyResetEffects(GameState state, List<GameEvent> events)
+        {
+            foreach (var lane in state.Lanes)
+            {
+                var def = LaneCatalog.Get(lane.LaneTypeId);
+                if (def == null || def.DamageAllOnEnergyReset <= 0) continue;
+
+                events.Add(new LaneEffectTriggeredEvent(lane.Position, def.Id));
+
+                foreach (var sublane in new[] { lane.P1, lane.P2 })
+                    foreach (var card in sublane.Slots)
+                        if (card != null && card.CurrentHealth > 0)
+                            MutationHelper.DealDirectDamage(
+                                card, def.DamageAllOnEnergyReset, sourceInstanceId: -1, events);
+
+                CombatResolver.ClearDeadInLane(lane, events);
             }
         }
 

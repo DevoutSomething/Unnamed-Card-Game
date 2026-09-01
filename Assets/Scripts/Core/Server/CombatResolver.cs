@@ -254,6 +254,18 @@ namespace Game.Core.Server
         // Deaths & game end
         // ------------------------------------------------------------------
 
+        /// <summary>
+        /// Sweeps one lane for guys sitting at 0 health from something that
+        /// happened OUTSIDE combat — a lane's on-entry debuff, or its
+        /// end-of-block hazard. Deliberately skips AwardDeathRewards: kill gold
+        /// is for a guy killing a guy in combat, and a lane is neither.
+        /// </summary>
+        public static void ClearDeadInLane(Lane lane, List<GameEvent> events)
+        {
+            RemoveDeadCards(lane, lane.P1, events);
+            RemoveDeadCards(lane, lane.P2, events);
+        }
+
         private static void ProcessDeaths(GameState state, Lane lane, List<GameEvent> events)
         {
             // Rewards first for every death on both sides, while all dead cards
