@@ -31,6 +31,15 @@ namespace Game.Core.State {
         // Cards currently offered to this player in the shop phase.
         public List<CardInstance> ShopOffers = new List<CardInstance>();
 
+        // Shop-visit-scoped state, reset every time a Shop slot begins (see
+        // CommandResolver.EnterShop). ShopReady latches once the player has
+        // signaled they're done shopping; ShopRemovalsThisVisit drives the
+        // removal cost's scaling (5, 10, 15, ...); the free reroll is a
+        // one-shot per visit.
+        public bool ShopReady;
+        public int ShopRemovalsThisVisit;
+        public bool HasUsedFreeDeckRerollThisVisit;
+
         public Player(int id) {
             Id = id;
             MaxHealth = 30;

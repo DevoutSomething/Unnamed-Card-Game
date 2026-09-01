@@ -3,7 +3,7 @@
   "type": "guy",
   "displayName": "Giant Ape",
   "energyCost": 5,
-  "goldCost": 0,
+  "goldCost": 25,
   "description": "Powerful and aggressive.",
   "rarity": "Rare",
   "archetypes": ["Bruiser"],

@@ -59,7 +59,12 @@ namespace Game.Client
         /// otherwise the fixed player id this client acts as (0 = host, 1 = joined).</summary>
         private int? _actingPlayerId;
 
+        /// <summary>Hot-seat only: which player is currently browsing the shop
+        /// (see ShopViewerId below). Defaults to P1; irrelevant online.</summary>
+        private int _hotSeatShopperId = 0;
+
         private BoardView _board;
+        private ShopView _shop;
         private LobbyView _lobby;
         private CardDatabase _db;
         private CardSkinLibrary _skins;
@@ -82,6 +87,27 @@ namespace Game.Client
                 int active = _server.State.ActivePlayerId;
                 return active >= 0 ? active : 0;
             }
+        }
+
+        /// <summary>True for a hot-seat match (no fixed acting player) — ShopView
+        /// uses this to decide whether to show its P1/P2 toggle at all.</summary>
+        public bool IsHotSeat => !_actingPlayerId.HasValue;
+
+        /// <summary>
+        /// Who's acting in the shop right now. Online, always the fixed acting
+        /// id (no ambiguity there). Hot-seat, ActingPlayerId's -1 fallback lands
+        /// on player 0 during Shop (ActivePlayerId is -1 there too — it's a
+        /// system slot with no single active player) — fine for the board, but
+        /// the shop needs BOTH hot-seat players able to act, so it uses this
+        /// locally toggled selection instead (see SetHotSeatShopper).
+        /// </summary>
+        public int ShopViewerId => _actingPlayerId ?? _hotSeatShopperId;
+
+        /// <summary>Hot-seat P1/P2 toggle clicked in ShopView.</summary>
+        public void SetHotSeatShopper(int playerId)
+        {
+            _hotSeatShopperId = playerId;
+            Redraw();
         }
 
         private void Start()
@@ -217,6 +243,11 @@ namespace Game.Client
                 _board = new BoardView();
                 _board.Build(this, _db, _skins, laneCount: 5, slotsPerSide: 2);
             }
+            if (_shop == null)
+            {
+                _shop = new ShopView();
+                _shop.Build(this, _db, _skins);
+            }
             _board.SetVisible(true);
             _lobby.Hide();
         }
@@ -269,6 +300,42 @@ namespace Game.Client
             _server.Submit(new EndPhaseCommand(ActingPlayerId));
         }
 
+        // ---------------------------------------------------------------
+        // SHOP (wired to ShopView's buttons)
+        // ---------------------------------------------------------------
+
+        /// <summary>Shop offer card clicked: buy it into ShopViewerId's deck.</summary>
+        public void BuyCard(CardInstance offer)
+        {
+            if (_server.State.IsGameOver) return;
+            _server.Submit(new BuyCardCommand(ShopViewerId, offer.InstanceId));
+            Redraw();
+        }
+
+        /// <summary>Deck card's Remove button clicked: pay this visit's scaling cost.</summary>
+        public void RemoveCardFromDeck(CardInstance card)
+        {
+            if (_server.State.IsGameOver) return;
+            _server.Submit(new RemoveCardFromDeckCommand(ShopViewerId, card.InstanceId));
+            Redraw();
+        }
+
+        /// <summary>"New Deck" button clicked: the once-per-visit free full reroll.</summary>
+        public void RerollDeck()
+        {
+            if (_server.State.IsGameOver) return;
+            _server.Submit(new RerollDeckCommand(ShopViewerId));
+            Redraw();
+        }
+
+        /// <summary>"Done Shopping" button clicked.</summary>
+        public void EndShop()
+        {
+            if (_server.State.IsGameOver) return;
+            _server.Submit(new EndShopCommand(ShopViewerId));
+            Redraw();
+        }
+
         /// <summary>
         /// The game-over overlay's single button, local or online alike:
         /// tears down any network connection, drops the finished match
@@ -283,6 +350,7 @@ namespace Game.Client
             _server = null;
             _actingPlayerId = null;
             _board.SetVisible(false);
+            _shop.SetVisible(false);
             _lobby.ShowMainMenu();
         }
 
@@ -298,6 +366,14 @@ namespace Game.Client
             _clientServer?.Pump();
 
             if (_server == null || _server.State == null || _server.State.IsGameOver) return;
+
+            if (_server.State.CurrentSlotType == SlotType.Shop)
+            {
+                _shop.TickCountdown(_server.State);
+                var deadline = _server.State.ShopDeadlineUtc;
+                if (deadline.HasValue && DateTime.UtcNow >= deadline.Value)
+                    _server.Submit(new ForceEndShopCommand());
+            }
 
 #if ENABLE_INPUT_SYSTEM
             var keyboard = UnityEngine.InputSystem.Keyboard.current;
@@ -365,6 +441,13 @@ namespace Game.Client
             Redraw();
         }
 
-        private void Redraw() => _board.Redraw(_server.State, ActingPlayerId);
+        private void Redraw()
+        {
+            _board.Redraw(_server.State, ActingPlayerId);
+
+            bool inShop = _server.State.CurrentSlotType == SlotType.Shop;
+            _shop.SetVisible(inShop);
+            if (inShop) _shop.Redraw(_server.State, ShopViewerId);
+        }
     }
 }

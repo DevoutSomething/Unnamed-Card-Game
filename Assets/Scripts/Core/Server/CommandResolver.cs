@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Game.Cards;
 using Game.Core.Abilities;
@@ -15,6 +16,17 @@ namespace Game.Core.Server
         private const int CardsDrawnPerBlock = 1;
         private const int DeckSize = 10;
         private const int MaxHandSize = 7;
+        private const int ShopOfferCount = 10;
+        private const int ShopRemoveBaseCost = 5;
+        private const int ShopRemoveCostIncrement = 5;
+        private const int ShopTimeLimitSeconds = 45; // easily changeable
+
+        // TEMP: there isn't enough non-Common card content yet to fill a real
+        // random pool (design_plan wants 10; only a handful exist so far), so
+        // for now every shop offer is just this one card — guarantees there's
+        // always something clickable to buy while more content gets authored.
+        // Remove this override (see GenerateShopOffers) once the pool's grown.
+        private const string TempShopPlaceholderCardId = "giantape_01"; // "Great Ape"
 
 
         public static List<GameEvent> Resolve(GameState state, Command cmd)
@@ -32,6 +44,11 @@ namespace Game.Core.Server
                 case StartGameCommand s: HandleStartGame(state, s, events); break;
                 case PlayCardCommand p:  HandlePlayCard(state, p, events);  break;
                 case EndPhaseCommand e:  HandleEndPhase(state, e, events);  break;
+                case BuyCardCommand buy:            HandleBuyCard(state, buy, events);            break;
+                case RemoveCardFromDeckCommand rem: HandleRemoveCardFromDeck(state, rem, events);  break;
+                case RerollDeckCommand rr:          HandleRerollDeck(state, rr, events);           break;
+                case EndShopCommand es:             HandleEndShop(state, es, events);              break;
+                case ForceEndShopCommand fe:        HandleForceEndShop(state, fe, events);         break;
                 default:
                     events.Add(new CommandRejectedEvent(cmd, "unknown command type"));
                     break;
@@ -169,6 +186,142 @@ namespace Game.Core.Server
             AdvanceSlot(state, events);
         }
 
+        // ---------------------------------------------------------------
+        // Shop
+        // ---------------------------------------------------------------
+
+        /// <summary>
+        /// Shared guard for every shop command: must be the Shop slot, and the
+        /// player must not have already signaled EndShop this visit. Unlike
+        /// HandlePlayCard/HandleEndPhase there's no single "active player" to
+        /// check — Shop has no turn structure, both players act freely.
+        /// </summary>
+        private static bool TryShopGuard(GameState state, Command cmd, List<GameEvent> events, out Player player)
+        {
+            player = null;
+            if (state.CurrentSlotType != SlotType.Shop)
+            {
+                events.Add(new CommandRejectedEvent(cmd, "not the shop phase"));
+                return false;
+            }
+
+            player = state.Players[cmd.PlayerId];
+            if (player.ShopReady)
+            {
+                events.Add(new CommandRejectedEvent(cmd, "already done shopping this visit"));
+                return false;
+            }
+
+            return true;
+        }
+
+        private static int NextRemoveCost(Player player) =>
+            ShopRemoveBaseCost + ShopRemoveCostIncrement * player.ShopRemovalsThisVisit;
+
+        private static void HandleBuyCard(GameState state, BuyCardCommand cmd, List<GameEvent> events)
+        {
+            if (!TryShopGuard(state, cmd, events, out var player)) return;
+
+            var offer = player.ShopOffers.Find(c => c.InstanceId == cmd.ShopCardInstanceId);
+            if (offer == null)
+            {
+                events.Add(new CommandRejectedEvent(cmd, "that card isn't in your shop offers"));
+                return;
+            }
+
+            int cost = FindDefinition(offer.DefinitionId)?.GoldCost ?? 0;
+            if (!MutationHelper.TrySpendGold(player, cost, events))
+            {
+                events.Add(new CommandRejectedEvent(cmd, $"not enough gold (have {player.Gold}, need {cost})"));
+                return;
+            }
+
+            player.ShopOffers.Remove(offer);
+            CardZones.TryAdd(state, offer, CardZone.Deck, events, out _);
+            events.Add(new CardBoughtEvent(player.Id, offer.InstanceId, cost));
+        }
+
+        /// <summary>
+        /// Deletes a card from the player's collection — the undrawn deck, their
+        /// hand, or a guy already deployed in a lane (see CardZones.OwnedCards).
+        /// Ownership is checked before any gold moves, so a bad id never charges.
+        /// </summary>
+        private static void HandleRemoveCardFromDeck(GameState state, RemoveCardFromDeckCommand cmd, List<GameEvent> events)
+        {
+            if (!TryShopGuard(state, cmd, events, out var player)) return;
+
+            if (!CardZones.Owns(state, player, cmd.DeckCardInstanceId))
+            {
+                events.Add(new CommandRejectedEvent(cmd, "that card isn't one of yours"));
+                return;
+            }
+
+            int cost = NextRemoveCost(player);
+            if (!MutationHelper.TrySpendGold(player, cost, events))
+            {
+                events.Add(new CommandRejectedEvent(cmd, $"not enough gold (have {player.Gold}, need {cost})"));
+                return;
+            }
+
+            CardZones.TryRemoveOwned(state, player, cmd.DeckCardInstanceId);
+            player.ShopRemovalsThisVisit++;
+            events.Add(new CardRemovedFromDeckEvent(player.Id, cmd.DeckCardInstanceId, cost));
+        }
+
+        /// <summary>Once per shop visit, free: discards the whole deck (not hand)
+        /// and deals a fresh one, same as the opening starter deck.</summary>
+        private static void HandleRerollDeck(GameState state, RerollDeckCommand cmd, List<GameEvent> events)
+        {
+            if (!TryShopGuard(state, cmd, events, out var player)) return;
+
+            if (player.HasUsedFreeDeckRerollThisVisit)
+            {
+                events.Add(new CommandRejectedEvent(cmd, "already used your free deck reroll this shop visit"));
+                return;
+            }
+
+            player.Deck.Clear();
+            BuildStarterDeck(state, player);
+            state.Rng.Shuffle(player.Deck);
+            player.HasUsedFreeDeckRerollThisVisit = true;
+            events.Add(new DeckRerolledEvent(player.Id));
+        }
+
+        private static void HandleEndShop(GameState state, EndShopCommand cmd, List<GameEvent> events)
+        {
+            if (!TryShopGuard(state, cmd, events, out var player)) return;
+
+            player.ShopReady = true;
+
+            if (state.Players[0].ShopReady && state.Players[1].ShopReady)
+            {
+                LeaveShop(state);
+                AdvanceSlot(state, events);
+            }
+        }
+
+        /// <summary>
+        /// Polled by clients every frame while the shop's timer is running
+        /// (see GameController.Update); a no-op unless the deadline has
+        /// actually passed by the resolver's OWN clock — safe to submit
+        /// speculatively, repeatedly, from any/every client.
+        /// </summary>
+        private static void HandleForceEndShop(GameState state, ForceEndShopCommand cmd, List<GameEvent> events)
+        {
+            if (state.CurrentSlotType != SlotType.Shop) return;
+            if (!state.ShopDeadlineUtc.HasValue || DateTime.UtcNow < state.ShopDeadlineUtc.Value) return;
+
+            foreach (var p in state.Players) p.ShopReady = true;
+            LeaveShop(state);
+            AdvanceSlot(state, events);
+        }
+
+        private static void LeaveShop(GameState state)
+        {
+            state.ShopDeadlineUtc = null;
+            foreach (var p in state.Players) p.ShopOffers.Clear();
+        }
+
         /// Advances the rotation pointer by one slot, auto-resolving any system slots
         /// (Combat, Event) it lands on, until it settles on a slot requiring player input.
         private static void AdvanceSlot(GameState state, List<GameEvent> events)
@@ -197,9 +350,8 @@ namespace Game.Core.Server
                     break;
 
                 case SlotType.Shop:
-                    //todo shop
-                    //we need to await actions
-                    break;
+                    EnterShop(state, events);
+                    break; // awaits BuyCard/RemoveCardFromDeck/RerollDeck/EndShop commands from both players
                 case SlotType.Augment:
                     // TODO: these need player input eventually. Skipped until built.
                     AdvanceSlot(state, events);
@@ -284,6 +436,65 @@ namespace Game.Core.Server
         }
 
         /// <summary>
+        /// Rotation lands on Shop: reset each player's per-visit shop state and
+        /// deal them a fresh set of offers. Doesn't recurse into AdvanceSlot —
+        /// Shop parks here awaiting both players' EndShopCommand.
+        /// </summary>
+        private static void EnterShop(GameState state, List<GameEvent> events)
+        {
+            state.ShopDeadlineUtc = DateTime.UtcNow.AddSeconds(ShopTimeLimitSeconds);
+
+            foreach (var player in state.Players)
+            {
+                player.ShopReady = false;
+                player.ShopRemovalsThisVisit = 0;
+                player.HasUsedFreeDeckRerollThisVisit = false;
+                GenerateShopOffers(state, player, events);
+            }
+        }
+
+        /// <summary>
+        /// 10 random offers from non-Common cards (design_plan: "10 cards
+        /// available from a random pool of non common cards" — later filtered
+        /// further by the player's character, for now the whole non-Common pool).
+        /// </summary>
+        private static void GenerateShopOffers(GameState state, Player player, List<GameEvent> events)
+        {
+            player.ShopOffers.Clear();
+
+            // TEMP placeholder (see TempShopPlaceholderCardId) while the non-Common
+            // pool is still too small to fill 10 real random offers.
+            var placeholder = FindDefinition(TempShopPlaceholderCardId);
+            if (placeholder != null)
+            {
+                for (int i = 0; i < ShopOfferCount; i++)
+                    if (CardFactory.TryCreate(state, placeholder, player.Id, out var card, out _))
+                        CardZones.TryAdd(state, card, CardZone.Shop, events, out _);
+            }
+            else
+            {
+                var pool = new List<CardDefinition>();
+                foreach (var def in CardCatalogRuntime.Pool)
+                    if (def.Rarity != Rarity.Common)
+                        pool.Add(def);
+
+                foreach (var def in state.Rng.PickN(pool, ShopOfferCount))
+                    if (CardFactory.TryCreate(state, def, player.Id, out var card, out _))
+                        CardZones.TryAdd(state, card, CardZone.Shop, events, out _);
+            }
+
+            events.Add(new ShopRefreshedEvent(player.Id));
+        }
+
+        private static CardDefinition FindDefinition(string cardId)
+        {
+            foreach (var def in CardCatalogRuntime.Pool)
+                if (def.CardId == cardId)
+                    return def;
+            return null;
+        }
+
+        /// <summary>
         /// Guy cards are only playable on a player's main action slot each
         /// cycle (their other slots are spell-only) — see Rotation.IsMainActionSlot.
         /// Determined by the card's CardDefinition, looked up by DefinitionId;
@@ -292,10 +503,8 @@ namespace Game.Core.Server
         /// </summary>
         private static bool IsGuyCard(CardInstance card)
         {
-            foreach (var def in CardCatalogRuntime.Pool)
-                if (def.CardId == card.DefinitionId)
-                    return def is GuyCardDefinition;
-            return true;
+            var def = FindDefinition(card.DefinitionId);
+            return def == null || def is GuyCardDefinition;
         }
 
         private static void DrawCard(GameState state, Player player, List<GameEvent> events)

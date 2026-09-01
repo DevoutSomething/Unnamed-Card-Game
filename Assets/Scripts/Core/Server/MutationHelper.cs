@@ -181,5 +181,21 @@ namespace Game.Core.Server
 
             events.Add(new GoldGainedEvent(player.Id, amount));
         }
+
+        /// <summary>
+        /// Deduct gold to pay for a shop action. Returns false (no mutation, no
+        /// event) if the player can't afford it — callers reject the command
+        /// instead of partially charging.
+        /// </summary>
+        public static bool TrySpendGold(Player player, int amount, List<GameEvent> events)
+        {
+            if (amount < 0) return false;
+            if (player.Gold < amount) return false;
+            if (amount == 0) return true;
+
+            player.Gold -= amount;
+            events.Add(new GoldLostEvent(player.Id, amount));
+            return true;
+        }
     }
 }

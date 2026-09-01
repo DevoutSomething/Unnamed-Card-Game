@@ -24,7 +24,9 @@ namespace Game.Core.State
             new(SlotType.Action, 1), new(SlotType.Action, 0),
             new(SlotType.Action, 0), new(SlotType.Action, 1),
             new(SlotType.Combat),
-            new(SlotType.Event),
+            // For now the rotation's final slot is always Shop. Later this
+            // becomes a random pick between Shop/Event/Augment.
+            new(SlotType.Shop),
         };
 
         public static int Length => Slots.Length;

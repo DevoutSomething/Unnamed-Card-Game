@@ -1,3 +1,4 @@
+using System;
 using Newtonsoft.Json;
 
 namespace Game.Core.State
@@ -7,6 +8,14 @@ namespace Game.Core.State
         public int Seed { get; }
         public Player[] Players { get; }
         public Lane[] Lanes { get; }
+
+        /// <summary>Set while CurrentSlotType is Shop: the wall-clock time both
+        /// players' shopping window closes, past which CommandResolver
+        /// force-advances the rotation regardless of ShopReady. Null outside
+        /// the shop phase. Compared against DateTime.UtcNow on whichever side
+        /// is authoritative (the host, online; the local resolver, hot-seat) —
+        /// never trusted from a client's own clock.</summary>
+        public DateTime? ShopDeadlineUtc { get; set; }
 
         // Rotation pointer. SlotIndex is the single source of truth for
         // "where are we in the turn structure" — everything else is derived.

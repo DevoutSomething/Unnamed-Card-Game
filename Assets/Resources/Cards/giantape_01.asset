@@ -15,7 +15,7 @@ MonoBehaviour:
   CardId: giantape_01
   DisplayName: Giant Ape
   EnergyCost: 5
-  GoldCost: 0
+  GoldCost: 25
   Description: Powerful and aggressive.
   Rarity: 1
   Archetypes: 02000000
