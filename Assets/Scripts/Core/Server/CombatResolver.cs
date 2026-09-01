@@ -325,7 +325,7 @@ namespace Game.Core.Server
         /// Simultaneous 0-0 reports winner -1 (a draw), though lane-by-lane resolution
         /// means lane order usually decides first.
         /// </summary>
-        private static bool CheckGameEnd(GameState state, List<GameEvent> events)
+        public static bool CheckGameEnd(GameState state, List<GameEvent> events)
         {
             bool p0Dead = state.Players[0].Health <= 0;
             bool p1Dead = state.Players[1].Health <= 0;

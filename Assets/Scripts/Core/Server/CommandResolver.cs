@@ -150,10 +150,21 @@ namespace Game.Core.Server
             // Starter decks deal "basic commons" only (game_plan) — rarer cards
             // will come from the shop/rewards once those exist.
             var guys = new List<CardDefinition>();
+            var spells = new List<CardDefinition>();
             foreach (var def in CardCatalogRuntime.Pool)
-                guys.Add(def);
+                (def is SpellCardDefinition ? spells : guys).Add(def);
 
-            foreach (var def in state.Rng.PickN(guys, DeckSize))
+            // TESTING: every spell in the catalog is guaranteed into the opening
+            // deck, so spell turns always have something to cast. Drop this back
+            // to a plain random draw once spells are earned from the shop.
+            foreach (var def in spells)
+            {
+                if (CardFactory.TryCreate(state, def, player.Id, out var spell, out _))
+                    player.Deck.Add(spell);
+            }
+
+            int remaining = Math.Max(0, DeckSize - player.Deck.Count);
+            foreach (var def in state.Rng.PickN(guys, remaining))
             {
                 if (CardFactory.TryCreate(state, def, player.Id, out var card, out _))
                     player.Deck.Add(card);
@@ -195,16 +206,29 @@ namespace Game.Core.Server
                 return;
             }
 
+            // Each action slot takes exactly one kind of card: your main slot is
+            // for guys, your bonus ("spell") slot is for spells. Never both.
             bool isGuy = IsGuyCard(card);
-            if (!state.IsMainActionSlot && isGuy)
+            if (isGuy && !state.IsMainActionSlot)
             {
-                events.Add(new CommandRejectedEvent(cmd, "guys can only be played on your first action slot each cycle — this is a bonus, spell-only slot"));
+                events.Add(new CommandRejectedEvent(cmd, "guys can only be played on your first action slot each cycle — this is a spell turn"));
+                return;
+            }
+            if (!isGuy && state.IsMainActionSlot)
+            {
+                events.Add(new CommandRejectedEvent(cmd, "spells can only be cast on your spell turn — this is your main slot, for guys"));
                 return;
             }
 
             if (card.CurrentCost > player.CurrentEnergy)
             {
                 events.Add(new CommandRejectedEvent(cmd, $"not enough energy (have {player.CurrentEnergy}, need {card.CurrentCost})"));
+                return;
+            }
+
+            if (!isGuy)
+            {
+                CastSpell(state, cmd, player, card, events);
                 return;
             }
 
@@ -252,6 +276,133 @@ namespace Game.Core.Server
                     DrawCard(state, player, events);
                 }
             }
+        }
+
+        // ---------------------------------------------------------------
+        // Spells
+        // ---------------------------------------------------------------
+
+        /// <summary>
+        /// Resolves a spell and consumes it: unlike a guy it never takes a lane
+        /// slot, so there's no placement step and nothing is left on the board.
+        /// The target is validated BEFORE any energy is spent, so a mis-aimed
+        /// spell costs nothing and stays in hand.
+        /// </summary>
+        private static void CastSpell(
+            GameState state, PlayCardCommand cmd, Player player, CardInstance card, List<GameEvent> events)
+        {
+            if (!(FindDefinition(card.DefinitionId) is SpellCardDefinition def))
+            {
+                events.Add(new CommandRejectedEvent(cmd, "that card has no spell definition"));
+                return;
+            }
+
+            if (!TryResolveSpellTarget(state, cmd, player, def,
+                                       out var targetCard, out var targetPlayer, out string targetError))
+            {
+                events.Add(new CommandRejectedEvent(cmd, targetError));
+                return;
+            }
+
+            player.CurrentEnergy -= card.CurrentCost;
+            events.Add(new EnergyChangedEvent(player.Id, player.CurrentEnergy, player.EnergyPerTurn));
+
+            player.cardsInHand.Remove(card);
+            events.Add(new SpellCastEvent(
+                player.Id, card.InstanceId, cmd.TargetCardInstanceId, cmd.TargetPlayerId));
+
+            if (def.DamageAmount > 0)
+            {
+                if (targetCard != null)
+                {
+                    // Direct, not combat, damage: a spell kill pays no bounty
+                    // (game_plan: gold is for a guy killing a guy) and provokes
+                    // no thorns.
+                    MutationHelper.DealDirectDamage(targetCard, def.DamageAmount, card.InstanceId, events);
+                }
+                else if (targetPlayer != null)
+                {
+                    MutationHelper.DealCombatDamageToPlayer(targetPlayer, def.DamageAmount, events);
+                }
+            }
+
+            if (def.HealAmount > 0 && targetCard != null)
+            {
+                MutationHelper.HealCard(targetCard, def.HealAmount, events);
+            }
+
+            if ((def.BuffAttack != 0 || def.BuffHealth != 0) && targetCard != null)
+            {
+                MutationHelper.ApplyStatModifier(targetCard, def.BuffAttack, def.BuffHealth, events);
+            }
+
+            for (int i = 0; i < def.DrawCount; i++)
+            {
+                DrawCard(state, player, events);
+            }
+
+            // A spell can kill a guy outright, so sweep before anyone reads the
+            // board again. Awards no kill gold, by ClearDeadInLane's contract.
+            foreach (var lane in state.Lanes)
+            {
+                CombatResolver.ClearDeadInLane(lane, events);
+            }
+
+            CombatResolver.CheckGameEnd(state, events);   // burn to the face can win
+        }
+
+        /// <summary>
+        /// Turns the command's raw target ids into the actual thing being hit,
+        /// rejecting anything the spell isn't allowed to point at. Out params are
+        /// mutually exclusive: at most one of them is non-null.
+        /// </summary>
+        private static bool TryResolveSpellTarget(
+            GameState state, PlayCardCommand cmd, Player caster, SpellCardDefinition def,
+            out CardInstance targetCard, out Player targetPlayer, out string error)
+        {
+            targetCard = null;
+            targetPlayer = null;
+            error = null;
+
+            if (!def.NeedsTarget) return true;
+
+            if (cmd.TargetPlayerId >= 0)
+            {
+                if (def.Target != SpellTarget.AnyCharacter)
+                {
+                    error = "this spell has to target a guy, not a hero";
+                    return false;
+                }
+                if (cmd.TargetPlayerId >= state.Players.Length)
+                {
+                    error = $"no such player ({cmd.TargetPlayerId})";
+                    return false;
+                }
+                targetPlayer = state.Players[cmd.TargetPlayerId];
+                return true;
+            }
+
+            if (cmd.TargetCardInstanceId < 0)
+            {
+                error = "this spell needs a target";
+                return false;
+            }
+
+            targetCard = state.FindCardInLanes(cmd.TargetCardInstanceId);
+            if (targetCard == null || targetCard.CurrentHealth <= 0)
+            {
+                error = "target isn't a living guy on the board";
+                return false;
+            }
+
+            if (def.Target == SpellTarget.FriendlyGuy && targetCard.OwnerId != caster.Id)
+            {
+                error = "this spell can only target your own guys";
+                targetCard = null;
+                return false;
+            }
+
+            return true;
         }
 
         private static void HandleEndPhase(GameState state, EndPhaseCommand cmd, List<GameEvent> events)

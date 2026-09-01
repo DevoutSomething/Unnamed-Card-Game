@@ -1,0 +1,13 @@
+{
+  "cardId": "research_01",
+  "type": "spell",
+  "displayName": "Research",
+  "energyCost": 2,
+  "goldCost": 20,
+  "description": "Draw 2 cards.",
+  "rarity": "Common",
+  "archetypes": ["Colorless"],
+  "tags": [],
+  "spellTarget": "None",
+  "drawCount": 2
+}

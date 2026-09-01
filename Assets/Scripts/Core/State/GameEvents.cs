@@ -10,6 +10,7 @@ namespace Game.Core.Events
     public record SlotChangedEvent(int SlotIndex, string SlotType, int ActivePlayerId) : GameEvent;
 
     public record CardDrawnEvent(int PlayerId, int CardInstanceId) : GameEvent;
+    public record SpellCastEvent(int PlayerId, int CardInstanceId, int TargetCardInstanceId, int TargetPlayerId) : GameEvent;
     public record CardPlayedEvent(int PlayerId, int CardInstanceId, int LaneIndex, int SlotIndex) : GameEvent;
     public record CardDiedEvent(int CardInstanceId, int LaneIndex, int SlotIndex, int KillerId) : GameEvent;
     public record CardMovedEvent(int CardInstanceId, int FromLane, int FromSlot, int ToLane, int ToSlot) : GameEvent;

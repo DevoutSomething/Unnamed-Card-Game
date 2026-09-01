@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1184136d3e27da142bf845e7ec4dd067, type: 3}
+  m_Name: empower_01
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Cards.SpellCardDefinition
+  CardId: empower_01
+  DisplayName: Empower
+  EnergyCost: 2
+  GoldCost: 25
+  Description: Give one of your guys +2/+2.
+  Rarity: 0
+  Archetypes: 02000000
+  Tags: []
+  Target: 2
+  DamageAmount: 0
+  HealAmount: 0
+  BuffAttack: 2
+  BuffHealth: 2
+  DrawCount: 0

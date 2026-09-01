@@ -5,11 +5,19 @@ public abstract record Command(int PlayerId);
 
 public record StartGameCommand(int Seed) : Command(-1);
 
+/// <summary>
+/// Plays a card from hand. Guys use LaneIndex/SlotIndex to pick where they
+/// stand. Spells ignore those and use the Target fields instead: exactly one of
+/// TargetCardInstanceId / TargetPlayerId is set (or neither, for a spell that
+/// needs no target). -1 means "not targeting that kind of thing".
+/// </summary>
 public record PlayCardCommand(
     int PlayerId,
     int CardInstanceId,
     int LaneIndex,
-    int SlotIndex = -1     
+    int SlotIndex = -1,
+    int TargetCardInstanceId = -1,
+    int TargetPlayerId = -1
 ) : Command(PlayerId);
 
 public record EndPhaseCommand(int PlayerId) : Command(PlayerId);

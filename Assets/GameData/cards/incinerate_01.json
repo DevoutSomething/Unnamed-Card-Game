@@ -1,0 +1,13 @@
+{
+  "cardId": "incinerate_01",
+  "type": "spell",
+  "displayName": "Incinerate",
+  "energyCost": 2,
+  "goldCost": 25,
+  "description": "Deal 4 damage to a guy.",
+  "rarity": "Rare",
+  "archetypes": ["Mage"],
+  "tags": [],
+  "spellTarget": "AnyGuy",
+  "damageAmount": 4
+}

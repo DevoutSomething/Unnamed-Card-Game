@@ -25,6 +25,10 @@ namespace Game.Client.View
         public GameController Controller;
         public RectTransform HandRoot;
 
+        /// <summary>Spells are aimed, not placed: they show no slot preview and
+        /// resolve against whatever guy or hero they're dropped on.</summary>
+        public bool IsSpell;
+
         RectTransform _rect;
         CanvasGroup _canvasGroup;
         LayoutElement _layoutElement;
@@ -85,6 +89,14 @@ namespace Game.Client.View
                 _inHand = false;
             }
 
+            // A spell never lands in a slot, so previewing one would be a lie
+            // about where it's going.
+            if (IsSpell)
+            {
+                Controller.ClearDropPreview();
+                return;
+            }
+
             // Hovering anywhere in a lane — including the opponent's half —
             // always previews a slot on this card's own side, since that's
             // the only place it could ever land: the specific front/back slot
@@ -101,15 +113,31 @@ namespace Game.Client.View
             Controller.ClearDropPreview();
             Controller.SetHandDragInProgress(false);   // before PlayCard below, whose Redraw() may need the hand rebuilt
 
-            var (laneIndex, slotIndex) = FindDropTarget(eventData);
-            if (laneIndex >= 0)
+            // A spell resolves against whatever it was dropped on, anywhere
+            // outside the hand — a guy, a hero, or (for untargeted spells like
+            // Research) simply the empty board.
+            if (IsSpell)
             {
-                // PlayCard() triggers a Redraw() that rebuilds the real hand/
-                // board from state, but this dragged wrapper may no longer be
-                // a child of the hand strip, so Redraw() won't clean it up.
-                Controller.PlayCard(Card, laneIndex, slotIndex);
-                Destroy(gameObject);
-                return;
+                if (!_inHand)
+                {
+                    var (targetCardId, targetPlayerId) = FindSpellTarget(eventData);
+                    Controller.CastSpell(Card, targetCardId, targetPlayerId);
+                    Destroy(gameObject);
+                    return;
+                }
+            }
+            else
+            {
+                var (laneIndex, slotIndex) = FindDropTarget(eventData);
+                if (laneIndex >= 0)
+                {
+                    // PlayCard() triggers a Redraw() that rebuilds the real hand/
+                    // board from state, but this dragged wrapper may no longer be
+                    // a child of the hand strip, so Redraw() won't clean it up.
+                    Controller.PlayCard(Card, laneIndex, slotIndex);
+                    Destroy(gameObject);
+                    return;
+                }
             }
 
             if (!_inHand)
@@ -145,6 +173,36 @@ namespace Game.Client.View
                 if (sibling.position.x < eventData.position.x) newIndex++;
             }
             if (_rect.GetSiblingIndex() != newIndex) _rect.SetSiblingIndex(newIndex);
+        }
+
+        /// <summary>
+        /// What a dropped spell is pointing at: (targetCardInstanceId,
+        /// targetPlayerId), each -1 when it isn't that kind of target. A hero
+        /// zone wins over a lane slot if somehow both are hit. Both come back
+        /// -1 for a drop on empty space, which is exactly what an untargeted
+        /// spell wants — and what the server rejects for a targeted one.
+        /// </summary>
+        (int targetCardInstanceId, int targetPlayerId) FindSpellTarget(PointerEventData eventData)
+        {
+            var results = new List<RaycastResult>();
+            EventSystem.current.RaycastAll(eventData, results);
+
+            foreach (var result in results)
+            {
+                var hero = result.gameObject.GetComponentInParent<HeroDropTarget>();
+                if (hero != null && hero.PlayerId >= 0) return (-1, hero.PlayerId);
+
+                var slot = result.gameObject.GetComponentInParent<SlotDropTarget>();
+                if (slot != null && slot.OwnerPlayerId >= 0)
+                {
+                    // The view knows where the pointer is; only the controller
+                    // knows which card instance actually stands there.
+                    int cardId = Controller.CardInstanceAt(slot.LaneIndex, slot.SlotIndex, slot.OwnerPlayerId);
+                    if (cardId >= 0) return (cardId, -1);
+                }
+            }
+
+            return (-1, -1);
         }
 
         /// <summary>

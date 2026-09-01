@@ -13,5 +13,11 @@ namespace Game.Client.View
     {
         public int LaneIndex;
         public int SlotIndex;
+
+        /// <summary>Which player's guy actually stands here, set fresh each
+        /// Redraw (the near/far rows swap by viewer, so this can't be baked in
+        /// at build time). Guy drops ignore it — they always go to your own
+        /// row — but a spell has to know whose guy it just got dropped on.</summary>
+        public int OwnerPlayerId = -1;
     }
 }

@@ -45,6 +45,7 @@ namespace Game.Core.Lanes
             DrawOnGuyPlayed = 1,
         };
 
+
         static readonly List<LaneDefinition> _all = new List<LaneDefinition>
         {
             Withering, Bulwark, Volcanic, Library,

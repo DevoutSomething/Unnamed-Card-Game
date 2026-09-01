@@ -276,6 +276,41 @@ namespace Game.Client
             Redraw();
         }
 
+        /// <summary>
+        /// Casts a spell at whatever it was dropped on. Both target ids may be
+        /// -1 (an untargeted spell like Research); the resolver is the referee
+        /// on whether this spell was allowed to point at that, and its rejection
+        /// is what the player sees.
+        /// </summary>
+        public void CastSpell(CardInstance card, int targetCardInstanceId, int targetPlayerId)
+        {
+            if (_server.State.IsGameOver) return;
+
+            _board.ShowMessage("");
+            _server.Submit(new PlayCardCommand(
+                ActingPlayerId, card.InstanceId,
+                LaneIndex: -1, SlotIndex: -1,
+                TargetCardInstanceId: targetCardInstanceId,
+                TargetPlayerId: targetPlayerId));
+
+            Redraw();
+        }
+
+        /// <summary>The instance id of the guy standing in a given slot, or -1.
+        /// Lets a drag translate "where the pointer is" into "which card".</summary>
+        public int CardInstanceAt(int laneIndex, int slotIndex, int ownerPlayerId)
+        {
+            var state = _server?.State;
+            if (state == null) return -1;
+            if (laneIndex < 0 || laneIndex >= state.Lanes.Length) return -1;
+            if (ownerPlayerId < 0 || ownerPlayerId >= state.Players.Length) return -1;
+
+            var slots = state.Lanes[laneIndex].SublaneOf(ownerPlayerId).Slots;
+            if (slotIndex < 0 || slotIndex >= slots.Length) return -1;
+
+            return slots[slotIndex]?.InstanceId ?? -1;
+        }
+
         /// <summary>Dragging a hand card over a lane: preview which slot it'll land in.</summary>
         public void ShowDropPreview(int laneIndex, int slotIndex, int forPlayerId) =>
             _board.ShowDropPreview(laneIndex, slotIndex, forPlayerId);
@@ -391,9 +426,30 @@ namespace Game.Client
             if (playFirstPressed)
             {
                 var player = _server.State.Players[ActingPlayerId];
-                var card = player.cardsInHand.Find(c => c.CurrentCost <= player.CurrentEnergy);
-                if (card != null) PlayCard(card, 0);
-                else Debug.Log("no affordable card in hand");
+                bool mainSlot = _server.State.IsMainActionSlot;
+
+                // Main slots take guys, spell turns take spells — searching for
+                // the wrong kind would only ever earn a rejection.
+                var card = player.cardsInHand.Find(c =>
+                    c.CurrentCost <= player.CurrentEnergy &&
+                    (_db?.Get(c.DefinitionId) is SpellCardDefinition) != mainSlot);
+
+                if (card == null)
+                {
+                    Debug.Log(mainSlot ? "no affordable guy in hand" : "no affordable spell in hand");
+                }
+                else if (mainSlot)
+                {
+                    PlayCard(card, 0);
+                }
+                else if (_db?.Get(card.DefinitionId) is SpellCardDefinition spell && spell.NeedsTarget)
+                {
+                    Debug.Log($"'{spell.DisplayName}' needs a target — drag it onto a guy or a hero.");
+                }
+                else
+                {
+                    CastSpell(card, targetCardInstanceId: -1, targetPlayerId: -1);
+                }
             }
         }
 

@@ -1,0 +1,14 @@
+{
+  "cardId": "empower_01",
+  "type": "spell",
+  "displayName": "Empower",
+  "energyCost": 2,
+  "goldCost": 25,
+  "description": "Give one of your guys +2/+2.",
+  "rarity": "Common",
+  "archetypes": ["Bruiser"],
+  "tags": [],
+  "spellTarget": "FriendlyGuy",
+  "buffAttack": 2,
+  "buffHealth": 2
+}

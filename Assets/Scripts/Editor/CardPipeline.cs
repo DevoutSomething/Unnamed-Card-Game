@@ -71,6 +71,14 @@ namespace Game.Cards.EditorTools {
             public int baseHealth = 1;
             public List<AbilityRefJson> abilities = new();
             public int killRewardGold;
+
+            // Spell-only. Ignored on guys.
+            public string spellTarget = "None";
+            public int damageAmount;
+            public int healAmount;
+            public int buffAttack;
+            public int buffHealth;
+            public int drawCount;
         }
 
         [Serializable]
@@ -183,6 +191,14 @@ namespace Game.Cards.EditorTools {
                     .ToList();
                 guy.KillRewardGold = dto.killRewardGold;
             }
+            else if (def is SpellCardDefinition spell) {
+                spell.Target = ParseEnum(dto.spellTarget, SpellTarget.None, dto.cardId, "spellTarget");
+                spell.DamageAmount = dto.damageAmount;
+                spell.HealAmount = dto.healAmount;
+                spell.BuffAttack = dto.buffAttack;
+                spell.BuffHealth = dto.buffHealth;
+                spell.DrawCount = dto.drawCount;
+            }
         }
 
         static T ParseEnum<T>(string value, T fallback, string cardId, string label) where T : struct {
@@ -291,6 +307,14 @@ namespace Game.Cards.EditorTools {
                         .Select(a => new AbilityRefJson { id = a.Id, x = a.X })
                         .ToList();
                     dto.killRewardGold = guy.KillRewardGold;
+                }
+                if (def is SpellCardDefinition spell) {
+                    dto.spellTarget = spell.Target.ToString();
+                    dto.damageAmount = spell.DamageAmount;
+                    dto.healAmount = spell.HealAmount;
+                    dto.buffAttack = spell.BuffAttack;
+                    dto.buffHealth = spell.BuffHealth;
+                    dto.drawCount = spell.DrawCount;
                 }
                 File.WriteAllText(Abs($"{CardJsonDir}/{def.CardId}.json"),
                                   JsonUtility.ToJson(dto, prettyPrint: true) + "\n");

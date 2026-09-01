@@ -1,0 +1,13 @@
+{
+  "cardId": "zap_01",
+  "type": "spell",
+  "displayName": "Zap",
+  "energyCost": 1,
+  "goldCost": 15,
+  "description": "Deal 2 damage to anything.",
+  "rarity": "Common",
+  "archetypes": ["Mage"],
+  "tags": [],
+  "spellTarget": "AnyCharacter",
+  "damageAmount": 2
+}

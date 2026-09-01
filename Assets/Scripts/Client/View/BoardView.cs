@@ -65,6 +65,7 @@ namespace Game.Client.View
         Text _phaseLabel;
         Text _messageLabel;
         readonly Text[] _playerLabels = new Text[2];   // [0] = you, [1] = opponent
+        readonly HeroDropTarget[] _heroDropTargets = new HeroDropTarget[2];
         Button _endPhaseButton;
 
         // [lane, screenRow, slot] -> the slot's own rect (background tint lives
@@ -167,6 +168,12 @@ namespace Game.Client.View
                                         20, TextAnchor.MiddleRight);
             ((RectTransform)_playerLabels[1].transform).offsetMax = new Vector2(-20, 0);
 
+            // Added after the labels so they sit on top in the raycast order —
+            // the labels themselves don't raycast, so these catch spell drops
+            // aimed at either hero.
+            _heroDropTargets[0] = AddHeroDropZone(bar, "YouHeroDrop", new Vector2(0, 0), new Vector2(0.5f, 1));
+            _heroDropTargets[1] = AddHeroDropZone(bar, "OpponentHeroDrop", new Vector2(0.5f, 0), new Vector2(1, 1));
+
             _messageLabel = AddLabel(canvas, "Message", new Vector2(0.2f, 1), new Vector2(0.8f, 1),
                                      18, TextAnchor.MiddleCenter);
             var msgRect = (RectTransform)_messageLabel.transform;
@@ -244,6 +251,17 @@ namespace Game.Client.View
                     _slotContainers[lane, 0, slot] = AddSlot(colRect, $"Near_Slot{slot}", slotW, slotH, lane, slot,
                         out _cardHolders[lane, 0, slot], out _dropPreviewOverlays[lane, 0, slot]);
             }
+        }
+
+        /// <summary>A fully transparent but raycastable zone over one player's
+        /// stat readout — where a spell aimed at a hero gets dropped.</summary>
+        static HeroDropTarget AddHeroDropZone(Transform parent, string name, Vector2 anchorMin, Vector2 anchorMax)
+        {
+            var rect = AddRect(parent, name, anchorMin, anchorMax);
+            var image = rect.gameObject.AddComponent<Image>();
+            image.color = new Color(0, 0, 0, 0f);
+            image.raycastTarget = true;   // invisible, but still catches the drop
+            return rect.gameObject.AddComponent<HeroDropTarget>();
         }
 
         /// <summary>
@@ -455,6 +473,10 @@ namespace Game.Client.View
                 var background = _slotContainers[lane, screenRow, slot].GetComponent<Image>();
                 if (background != null) background.color = tint;
 
+                // Whose row this is, for spell targeting (see SlotDropTarget).
+                var dropTarget = _slotContainers[lane, screenRow, slot].GetComponent<SlotDropTarget>();
+                if (dropTarget != null) dropTarget.OwnerPlayerId = sublane.PlayerId;
+
                 var cardHolder = _cardHolders[lane, screenRow, slot];
                 ClearChildren(cardHolder);
 
@@ -520,6 +542,9 @@ namespace Game.Client.View
                 drag.Card = card;
                 drag.Controller = _controller;
                 drag.HandRoot = _handRoot;
+                // A spell is aimed at a target, not placed in a slot — the view
+                // knows the definition, so the drag doesn't have to look it up.
+                drag.IsSpell = _db?.Get(card.DefinitionId) is SpellCardDefinition;
 
                 _preview.Attach(wrapper, card);
 
@@ -595,6 +620,9 @@ namespace Game.Client.View
 
             _playerLabels[1].text = FormatPlayerStats("OPPONENT", opponentId, state.Players[opponentId]);
             _playerLabels[1].color = opponentActive ? ActiveColor : Color.white;
+
+            _heroDropTargets[0].PlayerId = viewerPlayerId;
+            _heroDropTargets[1].PlayerId = opponentId;
 
             // Same ordering as the rotation table always had — this only changes
             // the words: "spell turn" is a player's bonus, guy-free action slot
