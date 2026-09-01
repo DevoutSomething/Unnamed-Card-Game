@@ -22,6 +22,8 @@ namespace Game.Client.View
     {
         const float CardW = 240f, CardH = 336f;
 
+        static readonly Color ReticleColor = new Color(1f, 0.85f, 0.4f, 0.95f);
+
         RectTransform _canvasRect;
         RectTransform _root;
         CardDatabase _db;
@@ -29,12 +31,20 @@ namespace Game.Client.View
         float _scale;
         bool _suppressed;
 
+        // The reticle frames the small card you're actually pointing at, while
+        // the enlarged copy floats above it — together they answer "which one
+        // am I on" and "what does it say" at the same time.
+        GameObject _reticle;
+        RectTransform _reticleRect;
+
         public void Build(Transform canvas, CardDatabase db, CardSkinLibrary skins, float scale = 1.3f)
         {
             _canvasRect = (RectTransform)canvas;
             _db = db;
             _skins = skins;
             _scale = scale;
+
+            BuildReticle(canvas);
 
             var go = new GameObject("HoverPreview", typeof(RectTransform));
             _root = (RectTransform)go.transform;
@@ -44,6 +54,68 @@ namespace Game.Client.View
             _root.offsetMin = Vector2.zero;
             _root.offsetMax = Vector2.zero;
             go.SetActive(false);
+        }
+
+        /// <summary>Four corner brackets rather than a full box: they read as a
+        /// targeting reticle and leave the card's own border visible.</summary>
+        void BuildReticle(Transform canvas)
+        {
+            _reticle = new GameObject("HoverReticle", typeof(RectTransform));
+            _reticleRect = (RectTransform)_reticle.transform;
+            _reticleRect.SetParent(canvas, false);
+            _reticleRect.anchorMin = _reticleRect.anchorMax = new Vector2(0.5f, 0.5f);
+            _reticleRect.pivot = new Vector2(0.5f, 0.5f);
+
+            const float arm = 20f, thick = 3f;
+            for (int cx = 0; cx <= 1; cx++)
+            {
+                for (int cy = 0; cy <= 1; cy++)
+                {
+                    var corner = new Vector2(cx, cy);
+                    float dx = cx == 0 ? 1f : -1f;
+                    float dy = cy == 0 ? 1f : -1f;
+
+                    AddBar(_reticleRect, corner, new Vector2(arm, thick),
+                           new Vector2(dx * arm * 0.5f, dy * thick * 0.5f));
+                    AddBar(_reticleRect, corner, new Vector2(thick, arm),
+                           new Vector2(dx * thick * 0.5f, dy * arm * 0.5f));
+                }
+            }
+
+            _reticle.SetActive(false);
+        }
+
+        static void AddBar(Transform parent, Vector2 corner, Vector2 size, Vector2 offset)
+        {
+            var go = new GameObject("Bar", typeof(RectTransform), typeof(Image));
+            var rect = (RectTransform)go.transform;
+            rect.SetParent(parent, false);
+            rect.anchorMin = rect.anchorMax = corner;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = size;
+            rect.anchoredPosition = offset;
+            var image = go.GetComponent<Image>();
+            image.color = ReticleColor;
+            image.raycastTarget = false;
+        }
+
+        /// <summary>Frames the hovered cell, matching its size.</summary>
+        void PlaceReticle(RectTransform sourceCell)
+        {
+            if (_reticle == null) return;
+            if (sourceCell == null)
+            {
+                _reticle.SetActive(false);
+                return;
+            }
+
+            Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(null, sourceCell.position);
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                _canvasRect, screenPoint, null, out Vector2 local);
+
+            _reticleRect.anchoredPosition = local;
+            _reticleRect.sizeDelta = sourceCell.rect.size + new Vector2(10f, 10f);
+            _reticle.SetActive(true);
         }
 
         /// <summary>
@@ -81,8 +153,11 @@ namespace Game.Client.View
             if (card == null)
             {
                 _root.gameObject.SetActive(false);
+                if (_reticle != null) _reticle.SetActive(false);
                 return;
             }
+
+            PlaceReticle(sourceCell);
 
             var view = CardViewFactory.Spawn(card, _root, _db, _skins);
             if (view == null) return;
@@ -104,6 +179,7 @@ namespace Game.Client.View
 
         public void Hide()
         {
+            if (_reticle != null) _reticle.SetActive(false);
             if (_root == null) return;
             ClearChildren(_root);
             _root.gameObject.SetActive(false);

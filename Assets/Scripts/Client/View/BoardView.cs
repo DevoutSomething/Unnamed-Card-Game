@@ -9,7 +9,7 @@ namespace Game.Client.View
 {
     /// <summary>
     /// The whole match screen, built from code so no scene/prefab hand-wiring is
-    /// needed: top stat bar, phase bar, 5 lane columns, the viewer's hand strip,
+    /// needed: phase banner, stat bar, 5 lane columns, the viewer's hand strip,
     /// an End Phase button, and a game-over overlay.
     ///
     /// Viewer-relative, not absolute-player-relative: whichever player is
@@ -29,33 +29,49 @@ namespace Game.Client.View
     public class BoardView
     {
         const float CardW = 240f, CardH = 336f;      // CardView prefab native size
-        const float SlotScale = 0.5f;                 // board cards: 120x168
-        const float HandScale = 0.7f;                 // hand cards: 168x235
 
-        static readonly Color PanelColor = new Color(0f, 0f, 0f, 0.35f);
-        static readonly Color ActiveColor = new Color(1f, 0.85f, 0.3f);
+        // Sized so the whole board fits between the stat bar and the hand strip
+        // without anything overlapping at the 1920x1080 reference resolution.
+        // Hovering enlarges anything you actually need to read closely.
+        const float SlotScale = 0.43f;
+        const float HandScale = 0.62f;
 
-        // Side highlighting: cool/blue = your side, warm/red = opponent's side,
-        // brighter whichever side is actually mid-turn right now.
-        static readonly Color YourSideColor = new Color(0.25f, 0.55f, 0.95f, 0.18f);
-        static readonly Color YourSideActiveColor = new Color(0.35f, 0.7f, 1f, 0.40f);
-        static readonly Color OpponentSideColor = new Color(0.85f, 0.35f, 0.30f, 0.18f);
-        static readonly Color OpponentSideActiveColor = new Color(0.95f, 0.4f, 0.35f, 0.40f);
+        const float PhaseBarH = 46f;
+        const float StatBarH = 74f;
+        const float LaneBannerH = 40f;
 
-        // Phase bar background: green whenever it's your turn (main or spell),
-        // grey whenever it's the opponent's.
-        static readonly Color PhaseYourTurnColor = new Color(0.20f, 0.6f, 0.32f, 0.95f);
-        static readonly Color PhaseOpponentTurnColor = new Color(0.45f, 0.45f, 0.47f, 0.95f);
-        static readonly Color PhaseNeutralColor = new Color(0.5f, 0.42f, 0.18f, 0.95f);
+        // ---- palette -----------------------------------------------------
+        // One place to retune the whole screen. Backgrounds are near-black and
+        // desaturated so the cards (the only saturated thing on screen) read as
+        // the foreground.
+        static readonly Color BgColor = new Color(0.055f, 0.065f, 0.085f);
+        static readonly Color BarColor = new Color(0.10f, 0.12f, 0.16f, 0.96f);
+        static readonly Color LanePanelColor = new Color(1f, 1f, 1f, 0.035f);
+        static readonly Color SlotEmptyColor = new Color(1f, 1f, 1f, 0.05f);
 
-        // Drop preview: the one slot a dragged hand card would land in if released now.
-        static readonly Color DropPreviewColor = new Color(1f, 0.95f, 0.4f, 0.55f);
+        static readonly Color TextBright = new Color(0.96f, 0.97f, 1f);
+        static readonly Color TextDim = new Color(0.62f, 0.66f, 0.76f);
 
-        // Lane banner: sits between the two sides, since a lane effect is
-        // neutral ground that hits both players equally. Plain lanes keep the
-        // faint divider look the board always had.
-        static readonly Color LaneEffectColor = new Color(0.42f, 0.32f, 0.72f, 0.90f);
-        static readonly Color LanePlainColor = new Color(1f, 1f, 1f, 0.25f);
+        static readonly Color AccentGold = new Color(1f, 0.82f, 0.35f);
+        static readonly Color AccentRed = new Color(1f, 0.48f, 0.45f);
+        static readonly Color AccentGreen = new Color(0.46f, 0.86f, 0.56f);
+        static readonly Color AccentBlue = new Color(0.45f, 0.72f, 1f);
+
+        // Side tint: cool = yours, warm = the opponent's, brighter mid-turn.
+        static readonly Color YourSideColor = new Color(0.28f, 0.58f, 0.95f, 0.10f);
+        static readonly Color YourSideActiveColor = new Color(0.35f, 0.70f, 1f, 0.24f);
+        static readonly Color OpponentSideColor = new Color(0.88f, 0.36f, 0.32f, 0.10f);
+        static readonly Color OpponentSideActiveColor = new Color(0.95f, 0.42f, 0.38f, 0.24f);
+
+        static readonly Color PhaseYourTurnColor = new Color(0.17f, 0.52f, 0.31f, 0.98f);
+        static readonly Color PhaseOpponentTurnColor = new Color(0.30f, 0.32f, 0.38f, 0.98f);
+        static readonly Color PhaseNeutralColor = new Color(0.42f, 0.34f, 0.14f, 0.98f);
+
+        static readonly Color DropPreviewColor = new Color(1f, 0.95f, 0.4f, 0.35f);
+        static readonly Color ValidTargetColor = new Color(0.45f, 1f, 0.68f, 1f);
+
+        static readonly Color LaneEffectColor = new Color(0.38f, 0.30f, 0.62f, 0.85f);
+        static readonly Color LanePlainColor = new Color(1f, 1f, 1f, 0.07f);
 
         GameController _controller;
         CardDatabase _db;
@@ -63,25 +79,32 @@ namespace Game.Client.View
 
         Image _phaseBarImage;
         Text _phaseLabel;
+        Text _rotationLabel;
         Text _messageLabel;
         readonly Text[] _playerLabels = new Text[2];   // [0] = you, [1] = opponent
         readonly HeroDropTarget[] _heroDropTargets = new HeroDropTarget[2];
+        readonly GameObject[] _heroHighlights = new GameObject[2];
         Button _endPhaseButton;
+        Image _endPhaseImage;
+        Text _endPhaseLabel;
 
         // [lane, screenRow, slot] -> the slot's own rect (background tint lives
-        // here) and its two children: _cardHolders is what RedrawSublane
-        // actually clears/spawns the CardView into (so that doesn't clobber
-        // the drop-preview overlay, a sibling rather than something nested
-        // under it). screenRow 0 = near/bottom (the viewer's own side), 1 =
-        // far/top (opponent's) — which absolute player fills which row is
-        // decided fresh every Redraw.
+        // here) plus its layered children: _cardHolders is what RedrawSublane
+        // clears/spawns the CardView into, so rebuilding it never clobbers the
+        // drop-preview or valid-target overlays sitting alongside it.
+        // screenRow 0 = near/bottom (the viewer's own side), 1 = far/top.
         RectTransform[,,] _slotContainers;
         RectTransform[,,] _cardHolders;
         Image[,,] _dropPreviewOverlays;
+        GameObject[,,] _targetHighlights;
+
         Image[] _laneBanners;
         Text[] _laneNameLabels;
         Text[] _laneDescLabels;
+
         Image _activeDropPreview;
+        bool _targetsShown;
+
         GameState _lastState;
         int _lastViewerPlayerId;
         RectTransform _handRoot;
@@ -90,10 +113,17 @@ namespace Game.Client.View
         GameObject _gameOverOverlay;
         Text _gameOverLabel;
         GameObject _canvasRoot;
+        RectTransform _canvasRect;
 
         // Hovering any card — in hand or deployed in a lane — floats an
-        // enlarged copy of it. Same layer type the shop uses.
+        // enlarged copy plus a reticle. Same layer the shop uses.
         readonly CardPreviewLayer _preview = new CardPreviewLayer();
+
+        // Hovering a lane's plate blows its rules text up to a readable size.
+        GameObject _laneTooltip;
+        RectTransform _laneTooltipRect;
+        Text _laneTooltipName;
+        Text _laneTooltipDesc;
 
         // ------------------------------------------------------------------
         // Build (once)
@@ -108,6 +138,7 @@ namespace Game.Client.View
             _slotContainers = new RectTransform[laneCount, 2, slotsPerSide];
             _cardHolders = new RectTransform[laneCount, 2, slotsPerSide];
             _dropPreviewOverlays = new Image[laneCount, 2, slotsPerSide];
+            _targetHighlights = new GameObject[laneCount, 2, slotsPerSide];
             _laneBanners = new Image[laneCount];
             _laneNameLabels = new Text[laneCount];
             _laneDescLabels = new Text[laneCount];
@@ -115,6 +146,7 @@ namespace Game.Client.View
             var canvasGo = new GameObject("BoardCanvas",
                 typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             _canvasRoot = canvasGo;
+            _canvasRect = (RectTransform)canvasGo.transform;
             var canvas = canvasGo.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             var scaler = canvasGo.GetComponent<CanvasScaler>();
@@ -125,15 +157,16 @@ namespace Game.Client.View
             EnsureEventSystem();
 
             var bg = AddRect(canvasGo.transform, "Background", Vector2.zero, Vector2.one);
-            bg.gameObject.AddComponent<Image>().color = new Color(0.09f, 0.11f, 0.13f);
+            bg.gameObject.AddComponent<Image>().color = BgColor;
 
             BuildPhaseBar(canvasGo.transform);
-            BuildTopBar(canvasGo.transform);
+            BuildStatBar(canvasGo.transform);
             BuildLanes(canvasGo.transform, laneCount, slotsPerSide);
             BuildHandStrip(canvasGo.transform);
             BuildEndPhaseButton(canvasGo.transform);
+            BuildLaneTooltip(canvasGo.transform);
             _preview.Build(canvasGo.transform, _db, _skins);   // above the board, below game-over
-            BuildGameOverOverlay(canvasGo.transform);   // last = drawn on top
+            BuildGameOverOverlay(canvasGo.transform);          // last = drawn on top
         }
 
         static void EnsureEventSystem()
@@ -152,67 +185,83 @@ namespace Game.Client.View
 #endif
         }
 
-        void BuildTopBar(Transform canvas)
-        {
-            var bar = AddRect(canvas, "TopBar", new Vector2(0, 1), new Vector2(1, 1));
-            bar.pivot = new Vector2(0.5f, 1);
-            bar.anchoredPosition = new Vector2(0, -40);   // sits directly under the 40px PhaseBar
-            bar.sizeDelta = new Vector2(0, 64);
-            bar.gameObject.AddComponent<Image>().color = PanelColor;
-
-            _playerLabels[0] = AddLabel(bar, "YouStats", new Vector2(0, 0), new Vector2(0.5f, 1),
-                                        20, TextAnchor.MiddleLeft);
-            ((RectTransform)_playerLabels[0].transform).offsetMin = new Vector2(20, 0);
-
-            _playerLabels[1] = AddLabel(bar, "OpponentStats", new Vector2(0.5f, 0), new Vector2(1, 1),
-                                        20, TextAnchor.MiddleRight);
-            ((RectTransform)_playerLabels[1].transform).offsetMax = new Vector2(-20, 0);
-
-            // Added after the labels so they sit on top in the raycast order —
-            // the labels themselves don't raycast, so these catch spell drops
-            // aimed at either hero.
-            _heroDropTargets[0] = AddHeroDropZone(bar, "YouHeroDrop", new Vector2(0, 0), new Vector2(0.5f, 1));
-            _heroDropTargets[1] = AddHeroDropZone(bar, "OpponentHeroDrop", new Vector2(0.5f, 0), new Vector2(1, 1));
-
-            _messageLabel = AddLabel(canvas, "Message", new Vector2(0.2f, 1), new Vector2(0.8f, 1),
-                                     18, TextAnchor.MiddleCenter);
-            var msgRect = (RectTransform)_messageLabel.transform;
-            msgRect.pivot = new Vector2(0.5f, 1);
-            msgRect.anchoredPosition = new Vector2(0, -112);
-            msgRect.sizeDelta = new Vector2(0, 32);
-            _messageLabel.color = new Color(1f, 0.55f, 0.5f);
-        }
-
-        /// <summary>A dedicated, color-coded banner flush against the very top
-        /// of the screen (above the stat bar): whose turn it is, from this
-        /// viewer's own perspective — the clearest single thing a networked
-        /// player needs at a glance.</summary>
+        /// <summary>The color-coded banner flush against the very top: whose
+        /// turn it is, from this viewer's perspective — the single clearest
+        /// thing a player needs at a glance.</summary>
         void BuildPhaseBar(Transform canvas)
         {
             var bar = AddRect(canvas, "PhaseBar", new Vector2(0, 1), new Vector2(1, 1));
             bar.pivot = new Vector2(0.5f, 1);
-            bar.sizeDelta = new Vector2(0, 40);
+            bar.sizeDelta = new Vector2(0, PhaseBarH);
             _phaseBarImage = bar.gameObject.AddComponent<Image>();
 
-            _phaseLabel = AddLabel(bar, "PhaseText", Vector2.zero, Vector2.one, 22, TextAnchor.MiddleCenter);
+            _phaseLabel = AddLabel(bar, "PhaseText", Vector2.zero, Vector2.one, 24, TextAnchor.MiddleCenter);
             _phaseLabel.fontStyle = FontStyle.Bold;
-            _phaseLabel.color = Color.black;
+
+            _rotationLabel = AddLabel(bar, "Rotation", new Vector2(1, 0), new Vector2(1, 1), 15, TextAnchor.MiddleRight);
+            var rotRect = (RectTransform)_rotationLabel.transform;
+            rotRect.pivot = new Vector2(1, 0.5f);
+            rotRect.sizeDelta = new Vector2(220, 0);
+            rotRect.anchoredPosition = new Vector2(-20, 0);
+        }
+
+        void BuildStatBar(Transform canvas)
+        {
+            var bar = AddRect(canvas, "StatBar", new Vector2(0, 1), new Vector2(1, 1));
+            bar.pivot = new Vector2(0.5f, 1);
+            bar.anchoredPosition = new Vector2(0, -PhaseBarH);
+            bar.sizeDelta = new Vector2(0, StatBarH);
+            bar.gameObject.AddComponent<Image>().color = BarColor;
+
+            _playerLabels[0] = AddLabel(bar, "YouStats", new Vector2(0, 0), new Vector2(0.5f, 1),
+                                        19, TextAnchor.MiddleLeft);
+            ((RectTransform)_playerLabels[0].transform).offsetMin = new Vector2(26, 0);
+
+            _playerLabels[1] = AddLabel(bar, "OpponentStats", new Vector2(0.5f, 0), new Vector2(1, 1),
+                                        19, TextAnchor.MiddleRight);
+            ((RectTransform)_playerLabels[1].transform).offsetMax = new Vector2(-26, 0);
+
+            // A hairline under the bar, so the play area reads as its own region.
+            var edge = AddRect(bar, "Edge", new Vector2(0, 0), new Vector2(1, 0));
+            edge.pivot = new Vector2(0.5f, 1);
+            edge.sizeDelta = new Vector2(0, 2f);
+            edge.gameObject.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0.08f);
+
+            // Added after the labels so they sit on top in the raycast order —
+            // the labels themselves don't raycast, so these catch spell drops
+            // aimed at either hero.
+            _heroDropTargets[0] = AddHeroDropZone(bar, "YouHeroDrop", new Vector2(0, 0), new Vector2(0.5f, 1),
+                                                  out _heroHighlights[0]);
+            _heroDropTargets[1] = AddHeroDropZone(bar, "OpponentHeroDrop", new Vector2(0.5f, 0), new Vector2(1, 1),
+                                                  out _heroHighlights[1]);
+
+            _messageLabel = AddLabel(canvas, "Message", new Vector2(0.15f, 1), new Vector2(0.85f, 1),
+                                     18, TextAnchor.MiddleCenter);
+            var msgRect = (RectTransform)_messageLabel.transform;
+            msgRect.pivot = new Vector2(0.5f, 1);
+            msgRect.anchoredPosition = new Vector2(0, -(PhaseBarH + StatBarH + 6f));
+            msgRect.sizeDelta = new Vector2(0, 28);
+            _messageLabel.color = AccentGold;
         }
 
         void BuildLanes(Transform canvas, int laneCount, int slotsPerSide)
         {
-            float slotW = CardW * SlotScale, slotH = CardH * SlotScale;   // 120 x 168
-            // Wider than the cards need: the lane banner between the two sides
-            // carries the effect text, and there's plenty of horizontal room.
-            float colW = slotW + 70f;
-            float bannerH = 44f;
-            float colH = slotsPerSide * 2 * slotH + bannerH + 6f * (slotsPerSide * 2) + 12f;
+            float slotW = CardW * SlotScale, slotH = CardH * SlotScale;
+            float colW = slotW + 64f;
+            float rowSpacing = 5f;
+            float colH = slotsPerSide * 2 * slotH + LaneBannerH + rowSpacing * (slotsPerSide * 2) + 12f;
 
-            var lanesRoot = AddRect(canvas, "Lanes", new Vector2(0.5f, 0.58f), new Vector2(0.5f, 0.58f));
-            lanesRoot.sizeDelta = new Vector2(laneCount * colW + (laneCount - 1) * 18f, colH);
+            // Centred in the band left between the stat bar and the hand strip.
+            float bandTop = 1080f - (PhaseBarH + StatBarH + 40f);
+            float bandBottom = CardH * HandScale + 26f;
+            float bandCenter = (bandTop + bandBottom) * 0.5f;
+
+            var lanesRoot = AddRect(canvas, "Lanes",
+                new Vector2(0.5f, bandCenter / 1080f), new Vector2(0.5f, bandCenter / 1080f));
+            lanesRoot.sizeDelta = new Vector2(laneCount * colW + (laneCount - 1) * 16f, colH);
 
             var row = lanesRoot.gameObject.AddComponent<HorizontalLayoutGroup>();
-            row.spacing = 18f;
+            row.spacing = 16f;
             row.childAlignment = TextAnchor.MiddleCenter;
             row.childControlWidth = false;
             row.childControlHeight = false;
@@ -225,12 +274,12 @@ namespace Game.Client.View
                 var colRect = (RectTransform)col.transform;
                 colRect.SetParent(lanesRoot, false);
                 colRect.sizeDelta = new Vector2(colW, colH);
-                col.GetComponent<Image>().color = PanelColor;
+                col.GetComponent<Image>().color = LanePanelColor;
                 col.GetComponent<LaneDropTarget>().LaneIndex = lane;
 
                 var stack = col.AddComponent<VerticalLayoutGroup>();
                 stack.padding = new RectOffset(0, 0, 6, 6);
-                stack.spacing = 6f;
+                stack.spacing = rowSpacing;
                 stack.childAlignment = TextAnchor.MiddleCenter;
                 stack.childControlWidth = false;
                 stack.childControlHeight = false;
@@ -241,33 +290,42 @@ namespace Game.Client.View
                 // it): back slot first so its front slot faces the middle.
                 for (int slot = slotsPerSide - 1; slot >= 0; slot--)
                     _slotContainers[lane, 1, slot] = AddSlot(colRect, $"Far_Slot{slot}", slotW, slotH, lane, slot,
-                        out _cardHolders[lane, 1, slot], out _dropPreviewOverlays[lane, 1, slot]);
+                        out _cardHolders[lane, 1, slot], out _dropPreviewOverlays[lane, 1, slot],
+                        out _targetHighlights[lane, 1, slot]);
 
-                AddLaneBanner(colRect, colW - 16f, bannerH, lane);
+                AddLaneBanner(colRect, colW - 14f, LaneBannerH, lane);
 
                 // Near row (bottom of screen, the viewer's own side): front
                 // slot faces the middle.
                 for (int slot = 0; slot < slotsPerSide; slot++)
                     _slotContainers[lane, 0, slot] = AddSlot(colRect, $"Near_Slot{slot}", slotW, slotH, lane, slot,
-                        out _cardHolders[lane, 0, slot], out _dropPreviewOverlays[lane, 0, slot]);
+                        out _cardHolders[lane, 0, slot], out _dropPreviewOverlays[lane, 0, slot],
+                        out _targetHighlights[lane, 0, slot]);
             }
         }
 
-        /// <summary>A fully transparent but raycastable zone over one player's
-        /// stat readout — where a spell aimed at a hero gets dropped.</summary>
-        static HeroDropTarget AddHeroDropZone(Transform parent, string name, Vector2 anchorMin, Vector2 anchorMax)
+        /// <summary>A transparent but raycastable zone over one player's stat
+        /// readout — where a spell aimed at a hero gets dropped, and what lights
+        /// up when such a spell is being dragged.</summary>
+        static HeroDropTarget AddHeroDropZone(Transform parent, string name,
+                                              Vector2 anchorMin, Vector2 anchorMax, out GameObject highlight)
         {
             var rect = AddRect(parent, name, anchorMin, anchorMax);
             var image = rect.gameObject.AddComponent<Image>();
             image.color = new Color(0, 0, 0, 0f);
             image.raycastTarget = true;   // invisible, but still catches the drop
+
+            highlight = AddOutline(rect, "ValidTarget", 3f, ValidTargetColor, inset: 6f);
+            highlight.SetActive(false);
+
             return rect.gameObject.AddComponent<HeroDropTarget>();
         }
 
         /// <summary>
-        /// The lane's "location" plate, dividing the two sides: effect name on
-        /// top, rules text under it. Replaces the plain divider the board used
-        /// to have — a lane with no effect just renders as that faint bar again.
+        /// The lane's "location" plate, dividing the two sides: effect name over
+        /// its rules text. Deliberately small — hovering it pops the full text
+        /// up at a readable size (see BuildLaneTooltip), so the resting state
+        /// can stay quiet and out of the way.
         /// </summary>
         void AddLaneBanner(Transform column, float w, float h, int laneIndex)
         {
@@ -279,33 +337,38 @@ namespace Game.Client.View
             layout.preferredWidth = w;
             layout.preferredHeight = h;
 
+            var hover = rect.gameObject.AddComponent<LaneHoverTarget>();
+            hover.LaneIndex = laneIndex;
+            hover.HoverEnter = ShowLaneTooltip;
+            hover.HoverExit = HideLaneTooltip;
+
             _laneNameLabels[laneIndex] = AddLabel(rect, "LaneName",
-                new Vector2(0, 0.50f), new Vector2(1, 1f), 12, TextAnchor.LowerCenter);
+                new Vector2(0, 0.48f), new Vector2(1, 1f), 12, TextAnchor.LowerCenter);
             _laneNameLabels[laneIndex].fontStyle = FontStyle.Bold;
 
             _laneDescLabels[laneIndex] = AddLabel(rect, "LaneDesc",
-                new Vector2(0, 0f), new Vector2(1, 0.50f), 10, TextAnchor.UpperCenter);
-            // Rules text is the one label on the board that must wrap rather
-            // than run off the side of its lane.
+                new Vector2(0, 0f), new Vector2(1, 0.48f), 10, TextAnchor.UpperCenter);
+            // Rules text is the one board label that must wrap rather than run
+            // off the side of its lane.
             _laneDescLabels[laneIndex].horizontalOverflow = HorizontalWrapMode.Wrap;
-            _laneDescLabels[laneIndex].color = new Color(1f, 1f, 1f, 0.85f);
+            _laneDescLabels[laneIndex].color = TextDim;
         }
 
         /// <summary>
-        /// A slot is three layers: the slot rect itself (background tint +
-        /// SlotDropTarget for precise front/back drop targeting), a
-        /// "CardHolder" child that RedrawSublane clears and spawns the
-        /// CardView into, and a "DropPreview" overlay sibling toggled during
-        /// drag. CardHolder exists so clearing/rebuilding it each redraw never
-        /// touches the overlay next to it.
+        /// A slot is layered: the slot rect itself (background tint +
+        /// SlotDropTarget for precise front/back drop targeting), a "CardHolder"
+        /// child that RedrawSublane clears and respawns the CardView into, and
+        /// two overlay siblings — the drop preview and the valid-spell-target
+        /// outline. CardHolder exists so rebuilding it each redraw never touches
+        /// the overlays beside it.
         /// </summary>
         RectTransform AddSlot(Transform parent, string name, float w, float h, int laneIndex, int slotIndex,
-                              out RectTransform cardHolder, out Image dropPreviewOverlay)
+                              out RectTransform cardHolder, out Image dropPreviewOverlay, out GameObject targetHighlight)
         {
             var slot = AddRect(parent, name, Vector2.zero, Vector2.zero);
             slot.sizeDelta = new Vector2(w, h);
             var img = slot.gameObject.AddComponent<Image>();
-            img.raycastTarget = true;   // the precise drop target itself now — see SlotDropTarget
+            img.raycastTarget = true;   // the precise drop target itself — see SlotDropTarget
             var le = slot.gameObject.AddComponent<LayoutElement>();
             le.preferredWidth = w;
             le.preferredHeight = h;
@@ -322,18 +385,28 @@ namespace Game.Client.View
             dropPreviewOverlay.raycastTarget = false;
             overlayRect.gameObject.SetActive(false);
 
+            targetHighlight = AddOutline(slot, "ValidTarget", 3f, ValidTargetColor, inset: 2f);
+            targetHighlight.SetActive(false);
+
             return slot;
         }
 
         void BuildHandStrip(Transform canvas)
         {
+            float h = CardH * HandScale + 16;
+
+            var backing = AddRect(canvas, "HandBacking", new Vector2(0, 0), new Vector2(1, 0));
+            backing.pivot = new Vector2(0.5f, 0);
+            backing.sizeDelta = new Vector2(0, h + 14);
+            backing.gameObject.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0.03f);
+
             _handRoot = AddRect(canvas, "Hand", new Vector2(0.5f, 0), new Vector2(0.5f, 0));
             _handRoot.pivot = new Vector2(0.5f, 0);
             _handRoot.anchoredPosition = new Vector2(0, 10);
-            _handRoot.sizeDelta = new Vector2(1500, CardH * HandScale + 14);
+            _handRoot.sizeDelta = new Vector2(1500, h);
 
             var row = _handRoot.gameObject.AddComponent<HorizontalLayoutGroup>();
-            row.spacing = 10f;
+            row.spacing = 12f;
             row.childAlignment = TextAnchor.LowerCenter;
             row.childControlWidth = false;
             row.childControlHeight = false;
@@ -345,17 +418,43 @@ namespace Game.Client.View
         {
             var rect = AddRect(canvas, "EndPhase", new Vector2(1, 0), new Vector2(1, 0));
             rect.pivot = new Vector2(1, 0);
-            rect.anchoredPosition = new Vector2(-24, 24);
-            rect.sizeDelta = new Vector2(190, 64);
+            rect.anchoredPosition = new Vector2(-28, 28);
+            rect.sizeDelta = new Vector2(200, 62);
 
-            var image = rect.gameObject.AddComponent<Image>();
-            image.color = new Color(0.25f, 0.45f, 0.75f);
+            _endPhaseImage = rect.gameObject.AddComponent<Image>();
             _endPhaseButton = rect.gameObject.AddComponent<Button>();
             _endPhaseButton.onClick.AddListener(() => _controller.EndPhase());
 
-            var label = AddLabel(rect, "Label", Vector2.zero, Vector2.one, 24, TextAnchor.MiddleCenter);
-            label.text = "End Phase";
-            label.fontStyle = FontStyle.Bold;
+            _endPhaseLabel = AddLabel(rect, "Label", Vector2.zero, Vector2.one, 22, TextAnchor.MiddleCenter);
+            _endPhaseLabel.text = "END PHASE";
+            _endPhaseLabel.fontStyle = FontStyle.Bold;
+        }
+
+        /// <summary>The floating panel a hovered lane plate blows up into —
+        /// the same words, at a size you can actually read.</summary>
+        void BuildLaneTooltip(Transform canvas)
+        {
+            _laneTooltip = new GameObject("LaneTooltip", typeof(RectTransform), typeof(Image));
+            _laneTooltipRect = (RectTransform)_laneTooltip.transform;
+            _laneTooltipRect.SetParent(canvas, false);
+            _laneTooltipRect.anchorMin = _laneTooltipRect.anchorMax = new Vector2(0.5f, 0.5f);
+            _laneTooltipRect.pivot = new Vector2(0.5f, 0.5f);
+            _laneTooltipRect.sizeDelta = new Vector2(340, 132);
+            _laneTooltip.GetComponent<Image>().color = new Color(0.07f, 0.08f, 0.12f, 0.98f);
+            _laneTooltip.GetComponent<Image>().raycastTarget = false;
+
+            AddOutline(_laneTooltipRect, "Edge", 2f, LaneEffectColor, inset: 0f);
+
+            _laneTooltipName = AddLabel(_laneTooltipRect, "Name",
+                new Vector2(0, 0.58f), new Vector2(1, 1f), 24, TextAnchor.MiddleCenter);
+            _laneTooltipName.fontStyle = FontStyle.Bold;
+            _laneTooltipName.color = AccentGold;
+
+            _laneTooltipDesc = AddLabel(_laneTooltipRect, "Desc",
+                new Vector2(0.06f, 0f), new Vector2(0.94f, 0.58f), 17, TextAnchor.UpperCenter);
+            _laneTooltipDesc.horizontalOverflow = HorizontalWrapMode.Wrap;
+
+            _laneTooltip.SetActive(false);
         }
 
         void BuildGameOverOverlay(Transform canvas)
@@ -367,17 +466,17 @@ namespace Game.Client.View
             rect.anchorMax = Vector2.one;
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
-            _gameOverOverlay.GetComponent<Image>().color = new Color(0, 0, 0, 0.78f);  // blocks clicks
+            _gameOverOverlay.GetComponent<Image>().color = new Color(0.02f, 0.03f, 0.05f, 0.86f);  // blocks clicks
 
             _gameOverLabel = AddLabel(rect, "Result", new Vector2(0, 0.5f), new Vector2(1, 0.75f),
-                                      64, TextAnchor.MiddleCenter);
+                                      68, TextAnchor.MiddleCenter);
             _gameOverLabel.fontStyle = FontStyle.Bold;
 
             // The one and only option here: back to the main menu. No in-place
             // rematch, so there's nothing else this overlay needs to offer.
             var btnRect = AddRect(rect, "MainMenuButton", new Vector2(0.5f, 0.38f), new Vector2(0.5f, 0.38f));
             btnRect.sizeDelta = new Vector2(280, 72);
-            btnRect.gameObject.AddComponent<Image>().color = new Color(0.25f, 0.6f, 0.3f);
+            btnRect.gameObject.AddComponent<Image>().color = new Color(0.20f, 0.50f, 0.28f);
             btnRect.gameObject.AddComponent<Button>().onClick.AddListener(() => _controller.ReturnToMainMenu());
             var btnLabel = AddLabel(btnRect, "Label", Vector2.zero, Vector2.one, 26, TextAnchor.MiddleCenter);
             btnLabel.text = "Main Menu";
@@ -389,7 +488,16 @@ namespace Game.Client.View
         /// <summary>Shows/hides the whole board canvas — used when backing out
         /// of an online match to the main menu, where the board would
         /// otherwise still be sitting behind the lobby screen.</summary>
-        public void SetVisible(bool visible) => _canvasRoot.SetActive(visible);
+        public void SetVisible(bool visible)
+        {
+            _canvasRoot.SetActive(visible);
+            if (!visible)
+            {
+                _preview.Hide();
+                HideLaneTooltip();
+                ClearSpellTargets();
+            }
+        }
 
         // ------------------------------------------------------------------
         // Redraw (every event batch)
@@ -410,6 +518,10 @@ namespace Game.Client.View
             ClearDropPreview();   // slots are about to be rebuilt/retinted from scratch
             _preview.Hide();      // whatever it was anchored to is about to change
 
+            // Mid-drag the highlights describe the card still in the player's
+            // hand, so they must survive a redraw the opponent triggered.
+            if (!_handDragInProgress) ClearSpellTargets();
+
             int opponentId = 1 - viewerPlayerId;
             bool viewerActive = state.CurrentSlotType == SlotType.Action && state.ActivePlayerId == viewerPlayerId;
             bool opponentActive = state.CurrentSlotType == SlotType.Action && state.ActivePlayerId == opponentId;
@@ -429,6 +541,10 @@ namespace Game.Client.View
             RedrawGameOver(state, viewerPlayerId);
 
             _endPhaseButton.interactable = viewerActive;
+            _endPhaseImage.color = viewerActive
+                ? new Color(0.22f, 0.45f, 0.78f)
+                : new Color(0.18f, 0.20f, 0.25f);
+            _endPhaseLabel.color = viewerActive ? TextBright : TextDim;
         }
 
         /// <summary>
@@ -466,12 +582,122 @@ namespace Game.Client.View
             _activeDropPreview = null;
         }
 
+        // ------------------------------------------------------------------
+        // Spell targeting
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// Outlines everything a spell being dragged is actually allowed to hit,
+        /// so "deal 2 damage to anything" shows its legal targets instead of
+        /// making the player guess and eat a rejection. Mirrors the resolver's
+        /// own rules (CommandResolver.TryResolveSpellTarget); the server still
+        /// re-validates, this only saves the player a wasted drag.
+        /// </summary>
+        public void ShowValidSpellTargets(CardInstance spellCard)
+        {
+            ClearSpellTargets();
+            if (_lastState == null || spellCard == null) return;
+            if (!(_db?.Get(spellCard.DefinitionId) is SpellCardDefinition def) || !def.NeedsTarget) return;
+
+            int casterId = spellCard.OwnerId;
+
+            for (int lane = 0; lane < _lastState.Lanes.Length && lane < _targetHighlights.GetLength(0); lane++)
+            {
+                for (int screenRow = 0; screenRow < 2; screenRow++)
+                {
+                    int ownerId = screenRow == 0 ? _lastViewerPlayerId : 1 - _lastViewerPlayerId;
+                    var sublane = _lastState.Lanes[lane].SublaneOf(ownerId);
+
+                    for (int slot = 0; slot < sublane.Slots.Length && slot < _targetHighlights.GetLength(2); slot++)
+                    {
+                        var card = sublane.Slots[slot];
+                        if (card == null || card.CurrentHealth <= 0) continue;
+                        if (def.Target == SpellTarget.FriendlyGuy && card.OwnerId != casterId) continue;
+
+                        var highlight = _targetHighlights[lane, screenRow, slot];
+                        if (highlight != null) highlight.SetActive(true);
+                    }
+                }
+            }
+
+            // Only "anything" reaches past the guys to the heroes themselves.
+            if (def.Target == SpellTarget.AnyCharacter)
+            {
+                foreach (var highlight in _heroHighlights)
+                    if (highlight != null) highlight.SetActive(true);
+            }
+
+            _targetsShown = true;
+        }
+
+        public void ClearSpellTargets()
+        {
+            if (!_targetsShown) return;
+
+            foreach (var highlight in _targetHighlights)
+                if (highlight != null) highlight.SetActive(false);
+            foreach (var highlight in _heroHighlights)
+                if (highlight != null) highlight.SetActive(false);
+
+            _targetsShown = false;
+        }
+
+        // ------------------------------------------------------------------
+        // Lane tooltip
+        // ------------------------------------------------------------------
+
+        void ShowLaneTooltip(int laneIndex, RectTransform source)
+        {
+            if (_lastState == null || laneIndex < 0 || laneIndex >= _lastState.Lanes.Length) return;
+
+            var def = LaneCatalog.Get(_lastState.Lanes[laneIndex].LaneTypeId);
+            if (def == null) return;   // a plain lane has nothing to enlarge
+
+            _laneTooltipName.text = def.DisplayName.ToUpperInvariant();
+            _laneTooltipDesc.text = def.Description;
+            _laneTooltipRect.anchoredPosition = ClampedCanvasPosition(source, _laneTooltipRect.sizeDelta, 0f);
+            _laneTooltip.SetActive(true);
+        }
+
+        void HideLaneTooltip()
+        {
+            if (_laneTooltip != null) _laneTooltip.SetActive(false);
+        }
+
+        /// <summary>Canvas-local position centred on a hovered rect, clamped so
+        /// the panel stays fully on screen.</summary>
+        Vector2 ClampedCanvasPosition(RectTransform source, Vector2 size, float yNudge)
+        {
+            Vector2 local = Vector2.zero;
+            if (source != null)
+            {
+                Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(null, source.position);
+                RectTransformUtility.ScreenPointToLocalPointInRectangle(_canvasRect, screenPoint, null, out local);
+            }
+            local.y += yNudge;
+
+            Vector2 canvasSize = _canvasRect.rect.size;
+            float maxX = Mathf.Max(0f, (canvasSize.x - size.x) * 0.5f);
+            float maxY = Mathf.Max(0f, (canvasSize.y - size.y) * 0.5f);
+            local.x = Mathf.Clamp(local.x, -maxX, maxX);
+            local.y = Mathf.Clamp(local.y, -maxY, maxY);
+            return local;
+        }
+
+        // ------------------------------------------------------------------
+        // Redraw parts
+        // ------------------------------------------------------------------
+
         void RedrawSublane(Sublane sublane, int lane, int screenRow, Color tint)
         {
             for (int slot = 0; slot < sublane.Slots.Length; slot++)
             {
+                var card = sublane.Slots[slot];
+
                 var background = _slotContainers[lane, screenRow, slot].GetComponent<Image>();
-                if (background != null) background.color = tint;
+                // An occupied slot gets the side tint; an empty one stays a
+                // near-neutral well, so "where can I still play" reads instantly.
+                if (background != null) background.color = card != null ? tint : SlotEmptyColor;
 
                 // Whose row this is, for spell targeting (see SlotDropTarget).
                 var dropTarget = _slotContainers[lane, screenRow, slot].GetComponent<SlotDropTarget>();
@@ -479,8 +705,6 @@ namespace Game.Client.View
 
                 var cardHolder = _cardHolders[lane, screenRow, slot];
                 ClearChildren(cardHolder);
-
-                var card = sublane.Slots[slot];
 
                 // Slot containers persist across redraws, so this just points
                 // the existing hover target at whatever occupies the slot now —
@@ -524,6 +748,13 @@ namespace Game.Client.View
             ClearChildren(_handRoot);
             var player = state.Players[viewerPlayerId];
 
+            bool spellTurn = state.CurrentSlotType == SlotType.Action
+                             && state.ActivePlayerId == viewerPlayerId
+                             && !state.IsMainActionSlot;
+            bool mainTurn = state.CurrentSlotType == SlotType.Action
+                            && state.ActivePlayerId == viewerPlayerId
+                            && state.IsMainActionSlot;
+
             foreach (var card in OrderedHand(player.cardsInHand))
             {
                 var wrapper = new GameObject("HandCard",
@@ -536,7 +767,15 @@ namespace Game.Client.View
                 le.preferredWidth = w;
                 le.preferredHeight = h;
 
-                wrapper.GetComponent<Image>().color = new Color(0, 0, 0, 0.25f);
+                bool isSpell = _db?.Get(card.DefinitionId) is SpellCardDefinition;
+
+                // Dim whatever this slot type can't play, so the hand shows what
+                // you can actually do right now instead of a wall of cards.
+                bool playableNow = (isSpell && spellTurn) || (!isSpell && mainTurn);
+                bool affordable = card.CurrentCost <= player.CurrentEnergy;
+                wrapper.GetComponent<Image>().color = playableNow && affordable
+                    ? new Color(0.45f, 0.8f, 1f, 0.22f)
+                    : new Color(0f, 0f, 0f, 0.28f);
 
                 var drag = wrapper.GetComponent<DraggableHandCard>();
                 drag.Card = card;
@@ -544,12 +783,17 @@ namespace Game.Client.View
                 drag.HandRoot = _handRoot;
                 // A spell is aimed at a target, not placed in a slot — the view
                 // knows the definition, so the drag doesn't have to look it up.
-                drag.IsSpell = _db?.Get(card.DefinitionId) is SpellCardDefinition;
+                drag.IsSpell = isSpell;
 
                 _preview.Attach(wrapper, card);
 
                 var view = CardViewFactory.Spawn(card, rect, _db, _skins);
-                if (view != null) PlaceCardView(view, HandScale);
+                if (view != null)
+                {
+                    PlaceCardView(view, HandScale);
+                    var group = view.gameObject.AddComponent<CanvasGroup>();
+                    group.alpha = playableNow && affordable ? 1f : 0.55f;
+                }
             }
         }
 
@@ -592,8 +836,9 @@ namespace Game.Client.View
         {
             _handDragInProgress = inProgress;
             // A giant preview pinned under the cursor is only ever in the way
-            // while you're aiming a card at a lane.
+            // while you're aiming a card.
             _preview.SetSuppressed(inProgress);
+            if (inProgress) HideLaneTooltip();
         }
 
         /// <summary>Center a spawned CardView in its container at the given scale.</summary>
@@ -606,7 +851,7 @@ namespace Game.Client.View
             rect.sizeDelta = new Vector2(CardW, CardH);
             rect.localScale = new Vector3(scale, scale, 1f);
 
-            // Clicks must reach the wrapper button (hand) or lane button (board).
+            // Clicks must reach the wrapper (hand) or the slot (board).
             var rootImage = view.GetComponent<Image>();
             if (rootImage != null) rootImage.raycastTarget = false;
         }
@@ -615,40 +860,59 @@ namespace Game.Client.View
         {
             int opponentId = 1 - viewerPlayerId;
 
-            _playerLabels[0].text = FormatPlayerStats("YOU", viewerPlayerId, state.Players[viewerPlayerId]);
-            _playerLabels[0].color = viewerActive ? ActiveColor : Color.white;
-
-            _playerLabels[1].text = FormatPlayerStats("OPPONENT", opponentId, state.Players[opponentId]);
-            _playerLabels[1].color = opponentActive ? ActiveColor : Color.white;
+            _playerLabels[0].text = FormatPlayerStats("YOU", viewerPlayerId, state.Players[viewerPlayerId], viewerActive);
+            _playerLabels[1].text = FormatPlayerStats("OPPONENT", opponentId, state.Players[opponentId], opponentActive);
 
             _heroDropTargets[0].PlayerId = viewerPlayerId;
             _heroDropTargets[1].PlayerId = opponentId;
 
-            // Same ordering as the rotation table always had — this only changes
-            // the words: "spell turn" is a player's bonus, guy-free action slot
-            // (GameState.IsMainActionSlot false), same green/grey as their main turn.
+            _rotationLabel.text = $"ROTATION {state.RotationIndex + 1}";
+            _rotationLabel.color = new Color(0f, 0f, 0f, 0.45f);
+
+            // "Spell turn" is a player's bonus, guy-free action slot
+            // (GameState.IsMainActionSlot false) — same green/grey as their main
+            // turn, but named so the slot rule is never a surprise.
             if (viewerActive)
             {
-                _phaseLabel.text = state.IsMainActionSlot ? "YOUR TURN" : "YOUR SPELL TURN";
+                _phaseLabel.text = state.IsMainActionSlot ? "YOUR TURN — PLAY A GUY" : "YOUR SPELL TURN — CAST A SPELL";
                 _phaseBarImage.color = PhaseYourTurnColor;
+                _phaseLabel.color = TextBright;
             }
             else if (opponentActive)
             {
                 _phaseLabel.text = state.IsMainActionSlot ? "OPPONENT'S TURN" : "OPPONENT'S SPELL TURN";
                 _phaseBarImage.color = PhaseOpponentTurnColor;
+                _phaseLabel.color = TextBright;
             }
             else
             {
-                _phaseLabel.text = $"{state.CurrentSlotType}...";
+                _phaseLabel.text = state.CurrentSlotType.ToString().ToUpperInvariant() + "...";
                 _phaseBarImage.color = PhaseNeutralColor;
+                _phaseLabel.color = TextBright;
             }
         }
 
         /// <param name="playerId">Absolute 0/1 player id, shown 1-indexed (P1/P2) — plainer for
         /// players than the internal 0-indexed id, and unambiguous alongside "YOU"/"OPPONENT".</param>
-        static string FormatPlayerStats(string label, int playerId, Player p) =>
-            $"{label} (P{playerId + 1})   HP {p.Health}/{p.MaxHealth}   EN {p.CurrentEnergy}/{p.EnergyPerTurn}   " +
-            $"GOLD {p.Gold}   HAND {p.cardsInHand.Count}   DECK {p.Deck.Count}";
+        static string FormatPlayerStats(string label, int playerId, Player p, bool active)
+        {
+            string name = active
+                ? $"<b><color=#{Hex(AccentGold)}>{label} (P{playerId + 1})</color></b>"
+                : $"<b><color=#{Hex(TextBright)}>{label} (P{playerId + 1})</color></b>";
+
+            return name + "   "
+                 + Stat("HP", $"{p.Health}/{p.MaxHealth}", p.Health <= 10 ? AccentRed : AccentGreen) + "  "
+                 + Stat("EN", $"{p.CurrentEnergy}/{p.EnergyPerTurn}", AccentBlue) + "  "
+                 + Stat("GOLD", p.Gold, AccentGold) + "  "
+                 + Stat("HAND", p.cardsInHand.Count, TextBright) + "  "
+                 + Stat("DECK", p.Deck.Count, TextBright);
+        }
+
+        static string Stat(string label, object value, Color valueColor) =>
+            $"<color=#{Hex(TextDim)}><size=13>{label}</size></color> " +
+            $"<color=#{Hex(valueColor)}><b>{value}</b></color>";
+
+        static string Hex(Color c) => ColorUtility.ToHtmlStringRGB(c);
 
         void RedrawGameOver(GameState state, int viewerPlayerId)
         {
@@ -662,6 +926,8 @@ namespace Game.Client.View
             bool opponentDead = state.Players[1 - viewerPlayerId].Health <= 0;
             _gameOverLabel.text = (viewerDead && opponentDead) ? "Draw!"
                 : viewerDead ? "You lose!" : "You win!";
+            _gameOverLabel.color = (viewerDead && opponentDead) ? TextBright
+                : viewerDead ? AccentRed : AccentGreen;
             _gameOverOverlay.SetActive(true);
         }
 
@@ -670,6 +936,42 @@ namespace Game.Client.View
         // ------------------------------------------------------------------
         // helpers
         // ------------------------------------------------------------------
+
+        /// <summary>
+        /// A hollow rectangle drawn as four thin bars, so it frames whatever
+        /// it's over without covering it — an alpha-blended fill would wash out
+        /// the card art underneath.
+        /// </summary>
+        static GameObject AddOutline(Transform parent, string name, float thickness, Color color, float inset)
+        {
+            var root = AddRect(parent, name, Vector2.zero, Vector2.one);
+            root.offsetMin = new Vector2(inset, inset);
+            root.offsetMax = new Vector2(-inset, -inset);
+
+            // (anchorMin, anchorMax, sizeDelta) per edge: each bar stretches
+            // along one axis and is `thickness` thick on the other.
+            AddBar(root, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, thickness), color);   // top
+            AddBar(root, new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, thickness), color);   // bottom
+            AddBar(root, new Vector2(0, 0), new Vector2(0, 1), new Vector2(thickness, 0), color);   // left
+            AddBar(root, new Vector2(1, 0), new Vector2(1, 1), new Vector2(thickness, 0), color);   // right
+
+            return root.gameObject;
+        }
+
+        static void AddBar(Transform parent, Vector2 anchorMin, Vector2 anchorMax, Vector2 sizeDelta, Color color)
+        {
+            var go = new GameObject("Bar", typeof(RectTransform), typeof(Image));
+            var rect = (RectTransform)go.transform;
+            rect.SetParent(parent, false);
+            rect.anchorMin = anchorMin;
+            rect.anchorMax = anchorMax;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            rect.sizeDelta = sizeDelta;
+            var image = go.GetComponent<Image>();
+            image.color = color;
+            image.raycastTarget = false;
+        }
 
         static void ClearChildren(Transform parent)
         {
@@ -705,7 +1007,8 @@ namespace Game.Client.View
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             text.fontSize = size;
             text.alignment = align;
-            text.color = Color.white;
+            text.color = TextBright;
+            text.supportRichText = true;
             text.horizontalOverflow = HorizontalWrapMode.Overflow;
             text.verticalOverflow = VerticalWrapMode.Overflow;
             text.raycastTarget = false;

@@ -89,7 +89,7 @@ namespace Game.Client.View
             scaler.matchWidthOrHeight = 0.5f;
 
             var bg = AddRect(canvasGo.transform, "Background", Vector2.zero, Vector2.one);
-            bg.gameObject.AddComponent<Image>().color = new Color(0.05f, 0.06f, 0.08f, 0.97f);
+            bg.gameObject.AddComponent<Image>().color = new Color(0.055f, 0.065f, 0.085f, 0.98f);
 
             BuildHeader(canvasGo.transform);
             _offersGrid = BuildScrollGrid(canvasGo.transform, "Offers",
@@ -115,12 +115,12 @@ namespace Game.Client.View
             rect.anchorMax = anchorMax;
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
-            _deckPanelRoot.GetComponent<Image>().color = new Color(0.04f, 0.05f, 0.07f, 0.99f);
+            _deckPanelRoot.GetComponent<Image>().color = new Color(0.055f, 0.065f, 0.085f, 0.99f);
 
             var subHeader = AddRect(rect, "SubHeader", new Vector2(0, 1), new Vector2(1, 1));
             subHeader.pivot = new Vector2(0.5f, 1);
             subHeader.sizeDelta = new Vector2(0, 48);
-            subHeader.gameObject.AddComponent<Image>().color = new Color(0.12f, 0.1f, 0.16f, 0.95f);
+            subHeader.gameObject.AddComponent<Image>().color = new Color(0.10f, 0.12f, 0.16f, 0.96f);
 
             _deckCountLabel = AddLabel(subHeader, "Count", new Vector2(0, 0), new Vector2(1, 1), 20, TextAnchor.MiddleLeft);
             ((RectTransform)_deckCountLabel.transform).offsetMin = new Vector2(20, 0);
@@ -146,7 +146,14 @@ namespace Game.Client.View
         void BuildHeader(Transform canvas)
         {
             var bar = AddRect(canvas, "Header", new Vector2(0, 0.86f), new Vector2(1, 1));
-            bar.gameObject.AddComponent<Image>().color = new Color(0.15f, 0.13f, 0.05f, 0.95f);
+            bar.gameObject.AddComponent<Image>().color = new Color(0.10f, 0.12f, 0.16f, 0.98f);
+
+            // Same hairline the board's stat bar uses, so the two screens read
+            // as one game rather than two prototypes.
+            var edge = AddRect(bar, "Edge", new Vector2(0, 0), new Vector2(1, 0));
+            edge.pivot = new Vector2(0.5f, 1);
+            edge.sizeDelta = new Vector2(0, 2f);
+            edge.gameObject.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0.08f);
 
             var title = AddLabel(bar, "Title", new Vector2(0, 0), new Vector2(0.25f, 1), 30, TextAnchor.MiddleLeft);
             title.text = "SHOP";

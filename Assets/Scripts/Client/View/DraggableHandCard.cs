@@ -52,6 +52,10 @@ namespace Game.Client.View
             _inHand = true;   // it already is — resting in the hand strip is where every drag starts
             Controller.SetHandDragInProgress(true);
 
+            // Light up everything this spell is allowed to hit, so aiming it is
+            // a matter of looking rather than guessing.
+            if (IsSpell) Controller.BeginSpellTargeting(Card);
+
             // Excluded from the hand strip's layout for the whole drag: the
             // layout group would otherwise fight to snap this card back into
             // a grid slot every frame while _rect.position is set to the
@@ -111,6 +115,7 @@ namespace Game.Client.View
             _canvasGroup.blocksRaycasts = true;
             _canvasGroup.alpha = 1f;
             Controller.ClearDropPreview();
+            Controller.EndSpellTargeting();
             Controller.SetHandDragInProgress(false);   // before PlayCard below, whose Redraw() may need the hand rebuilt
 
             // A spell resolves against whatever it was dropped on, anywhere

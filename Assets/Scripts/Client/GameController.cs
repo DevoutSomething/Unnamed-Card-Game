@@ -318,6 +318,12 @@ namespace Game.Client
         /// <summary>Drag ended or moved off every lane: hide the preview.</summary>
         public void ClearDropPreview() => _board.ClearDropPreview();
 
+        /// <summary>A spell drag started: outline every legal target for it.</summary>
+        public void BeginSpellTargeting(CardInstance card) => _board.ShowValidSpellTargets(card);
+
+        /// <summary>The drag settled (played, cancelled, or dropped nowhere).</summary>
+        public void EndSpellTargeting() => _board.ClearSpellTargets();
+
         /// <summary>A hand-reorder drag settled without playing the card: persist its new position.</summary>
         public void CommitHandOrder() => _board.CommitHandOrder();
 
