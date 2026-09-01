@@ -350,6 +350,8 @@ namespace Game.Cards.EditorTools {
                         minEnergyCost = def.Conjure.MinEnergyCost,
                         maxEnergyCost = def.Conjure.MaxEnergyCost,
                         costReduction = def.Conjure.CostReduction,
+                        attackBonus = def.Conjure.AttackBonus,
+                        healthBonus = def.Conjure.HealthBonus,
                     };
                 }
                 if (def is GuyCardDefinition guy) {

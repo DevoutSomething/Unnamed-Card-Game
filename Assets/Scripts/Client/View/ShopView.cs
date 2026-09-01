@@ -37,6 +37,19 @@ namespace Game.Client.View
         /// Remove button.</summary>
         const float DeckCellButtonBand = 40f;
 
+        /// <summary>Extra height each offer cell reserves below the card for its
+        /// price bar.</summary>
+        const float OfferCellPriceBand = 34f;
+
+        // Offer states. Affordable reads as a live price; unaffordable greys the
+        // whole cell out rather than just recoloring the number, so "can't buy"
+        // is legible from across the grid without reading anything.
+        static readonly Color PriceBarColor = new Color(0.12f, 0.14f, 0.18f, 0.96f);
+        static readonly Color PriceBarLockedColor = new Color(0.10f, 0.11f, 0.13f, 0.96f);
+        static readonly Color PriceTextColor = new Color(1f, 0.84f, 0.35f);
+        static readonly Color PriceTextLockedColor = new Color(0.50f, 0.53f, 0.60f);
+        const float LockedCardAlpha = 0.35f;
+
         // Must match CommandResolver's ShopRemoveBaseCost/ShopRemoveCostIncrement —
         // duplicated here only for a live cost-preview label; the server is the
         // sole source of truth and re-validates on every RemoveCardFromDeckCommand.
@@ -51,8 +64,6 @@ namespace Game.Client.View
         Text _goldLabel;
         Text _timerLabel;
         Text _statusLabel;
-        Button _rerollButton;
-        Text _rerollLabel;
         Button _doneButton;
         Button _removeCardButton;
         RectTransform _offersGrid;
@@ -93,7 +104,8 @@ namespace Game.Client.View
 
             BuildHeader(canvasGo.transform);
             _offersGrid = BuildScrollGrid(canvasGo.transform, "Offers",
-                new Vector2(0.02f, 0.06f), new Vector2(0.98f, 0.84f), CardW * OfferScale, CardH * OfferScale);
+                new Vector2(0.02f, 0.06f), new Vector2(0.98f, 0.84f),
+                CardW * OfferScale, CardH * OfferScale + OfferCellPriceBand);
             BuildDeckPanel(canvasGo.transform, new Vector2(0.02f, 0.06f), new Vector2(0.98f, 0.84f));
 
             // Built last so it's the final sibling — the hover preview floats
@@ -167,16 +179,11 @@ namespace Game.Client.View
             _timerLabel.fontStyle = FontStyle.Bold;
 
             _statusLabel = AddLabel(bar, "Status", new Vector2(0.62f, 0), new Vector2(1f, 1), 18, TextAnchor.MiddleRight);
-            ((RectTransform)_statusLabel.transform).offsetMax = new Vector2(-620, 0);
+            ((RectTransform)_statusLabel.transform).offsetMax = new Vector2(-410, 0);
             _statusLabel.color = new Color(1f, 0.6f, 0.55f);
 
-            _rerollButton = AddButton(bar, "RerollButton", new Vector2(1, 0.5f), new Vector2(1, 0.5f),
-                new Vector2(-380, 0), new Vector2(180, 48), "New Deck (free x1)", 16,
-                () => _controller.RerollDeck());
-            _rerollLabel = _rerollButton.GetComponentInChildren<Text>();
-
             _removeCardButton = AddButton(bar, "RemoveCardButton", new Vector2(1, 0.5f), new Vector2(1, 0.5f),
-                new Vector2(-590, 0), new Vector2(180, 48), "Remove Card", 16,
+                new Vector2(-380, 0), new Vector2(180, 48), "Edit Draw Pile", 16,
                 () => SetDeckPanelOpen(true));
 
             _doneButton = AddButton(bar, "DoneButton", new Vector2(1, 0.5f), new Vector2(1, 0.5f),
@@ -315,12 +322,9 @@ namespace Game.Client.View
             _statusLabel.text = opponent.ShopReady && !player.ShopReady ? "opponent is waiting on you..." : "";
 
             bool locked = player.ShopReady;
-            _rerollButton.interactable = !locked && !player.HasUsedFreeDeckRerollThisVisit;
-            _rerollLabel.text = player.HasUsedFreeDeckRerollThisVisit ? "New Deck (used)" : "New Deck (free x1)";
             _doneButton.interactable = !locked;
             _removeCardButton.interactable = !locked;
-            _deckCountLabel.text =
-                $"YOUR DECK ({CardZones.OwnedCards(state, player).Count} cards — draw pile, hand, and board)";
+            _deckCountLabel.text = $"YOUR DRAW PILE ({player.Deck.Count} cards)";
 
             bool hotSeat = _controller.IsHotSeat;
             _hotSeatToggle.SetActive(hotSeat);
@@ -335,7 +339,7 @@ namespace Game.Client.View
             }
 
             RedrawOffers(player, locked);
-            RedrawDeck(state, player, locked);
+            RedrawDeck(player, locked);
         }
 
         void RedrawOffers(Player player, bool locked)
@@ -346,62 +350,81 @@ namespace Game.Client.View
             {
                 var def = _db?.Get(card.DefinitionId);
                 int price = def?.GoldCost ?? 0;
-
                 bool affordable = player.Gold >= price;
-                var wrapper = MakeCardCell(_offersGrid, card, $"{price}g",
-                    affordable ? new Color(1f, 0.85f, 0.3f) : new Color(0.8f, 0.4f, 0.35f));
+
+                var wrapper = MakeCardCell(_offersGrid, card);
                 var button = wrapper.GetComponent<Button>();
                 button.interactable = !locked && affordable;
                 button.onClick.AddListener(() => _controller.BuyCard(card));
 
                 var view = CardViewFactory.Spawn(card, wrapper.transform, _db, _skins);
-                if (view != null) PlaceCardView(view, OfferScale);
+                if (view != null)
+                {
+                    // Lifted clear of the price bar the cell reserves below it.
+                    PlaceCardView(view, OfferScale, OfferCellPriceBand * 0.5f);
+
+                    // Dim the card itself, not just its price — an unaffordable
+                    // offer should read as unavailable at a glance. Hovering
+                    // still shows it at full strength in the preview.
+                    var group = view.gameObject.AddComponent<CanvasGroup>();
+                    group.alpha = affordable ? 1f : LockedCardAlpha;
+                }
+
+                AddPriceBar(wrapper.transform, price, affordable);
             }
         }
 
-        void RedrawDeck(GameState state, Player player, bool locked)
+        /// <summary>The offer's price on its own bar under the card, so the cost
+        /// is always readable at cell size instead of tucked in a corner.</summary>
+        static void AddPriceBar(Transform cell, int price, bool affordable)
+        {
+            var rect = AddRect(cell, "PriceBar", new Vector2(0, 0), new Vector2(1, 0));
+            rect.pivot = new Vector2(0.5f, 0);
+            rect.sizeDelta = new Vector2(-10f, OfferCellPriceBand - 9f);
+            rect.anchoredPosition = new Vector2(0, 5f);
+
+            var background = rect.gameObject.AddComponent<Image>();
+            background.color = affordable ? PriceBarColor : PriceBarLockedColor;
+            background.raycastTarget = false;   // the click belongs to the cell
+
+            var label = AddLabel(rect, "Text", Vector2.zero, Vector2.one, 15, TextAnchor.MiddleCenter);
+            label.text = $"{price} GOLD";
+            label.fontStyle = FontStyle.Bold;
+            label.color = affordable ? PriceTextColor : PriceTextLockedColor;
+        }
+
+        /// <summary>The draw pile, and only the draw pile — the shop edits what
+        /// you'll draw, never your hand or the guys already deployed.</summary>
+        void RedrawDeck(Player player, bool locked)
         {
             ClearChildren(_deckGrid);
 
+            // Every removal this visit costs the same scaling price, so the
+            // whole list previews one figure — it's the NEXT removal's cost.
             int cost = RemoveBaseCost + RemoveCostIncrement * player.ShopRemovalsThisVisit;
             bool affordable = player.Gold >= cost;
 
-            foreach (var owned in CardZones.OwnedCards(state, player))
+            foreach (var card in player.Deck)
             {
-                var wrapper = MakeCardCell(_deckGrid, owned.Card,
-                    LocationTag(owned.Location), LocationColor(owned.Location));
+                var wrapper = MakeCardCell(_deckGrid, card);
                 // The cell reserves DeckCellButtonBand at the bottom for the
                 // button; lift the card by half that so they don't overlap.
-                var view = CardViewFactory.Spawn(owned.Card, wrapper.transform, _db, _skins);
+                var view = CardViewFactory.Spawn(card, wrapper.transform, _db, _skins);
                 if (view != null) PlaceCardView(view, DeckScale, DeckCellButtonBand * 0.5f);
 
-                var card = owned.Card;
+                var removed = card;
                 var removeBtn = AddButton(wrapper.transform, "Remove",
                     new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 16),
                     new Vector2(CardW * DeckScale - 8, 28), $"Remove ({cost}g)", 13,
-                    () => _controller.RemoveCardFromDeck(card));
+                    () => _controller.RemoveCardFromDeck(removed));
                 removeBtn.interactable = !locked && affordable;
             }
         }
 
-        static string LocationTag(OwnedCardLocation location) => location switch
-        {
-            OwnedCardLocation.Hand => "HAND",
-            OwnedCardLocation.Board => "BOARD",
-            _ => "DECK",
-        };
-
-        static Color LocationColor(OwnedCardLocation location) => location switch
-        {
-            OwnedCardLocation.Hand => new Color(0.5f, 0.85f, 1f),
-            OwnedCardLocation.Board => new Color(1f, 0.65f, 0.4f),
-            _ => new Color(0.75f, 0.75f, 0.8f),
-        };
-
         /// <summary>A clickable, hoverable card slot: background + Button +
         /// hover reporting (the caller spawns the CardView into it) + an
         /// optional corner tag.</summary>
-        GameObject MakeCardCell(Transform parent, CardInstance card, string tag, Color tagColor)
+        GameObject MakeCardCell(Transform parent, CardInstance card)
         {
             var wrapper = new GameObject("Cell", typeof(RectTransform), typeof(Image), typeof(Button));
             var rect = (RectTransform)wrapper.transform;
@@ -409,19 +432,6 @@ namespace Game.Client.View
             wrapper.GetComponent<Image>().color = new Color(0, 0, 0, 0.3f);
 
             _preview.Attach(wrapper, card);
-
-            if (!string.IsNullOrEmpty(tag))
-            {
-                var tagLabel = AddLabel(rect, "Tag", new Vector2(0, 1), new Vector2(1, 1), 16, TextAnchor.UpperRight);
-                tagLabel.text = tag;
-                tagLabel.color = tagColor;
-                tagLabel.fontStyle = FontStyle.Bold;
-                var tagRect = (RectTransform)tagLabel.transform;
-                tagRect.pivot = new Vector2(1, 1);
-                tagRect.anchoredPosition = new Vector2(-6, -4);
-                tagRect.sizeDelta = new Vector2(80, 24);
-            }
-
             return wrapper;
         }
 

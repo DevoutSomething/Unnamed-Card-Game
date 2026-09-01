@@ -2,7 +2,7 @@
   "cardId": "arcane_surge_01",
   "type": "spell",
   "displayName": "Arcane Surge",
-  "energyCost": 3,
+  "energyCost": 4,
   "goldCost": 30,
   "description": "Conjure 3 random spells into your hand.",
   "rarity": "Rare",

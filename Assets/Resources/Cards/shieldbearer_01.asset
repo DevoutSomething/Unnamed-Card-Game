@@ -21,7 +21,20 @@ MonoBehaviour:
   Archetypes: 0100000000000000
   Tags:
   - tank
+  Conjure:
+    Count: 0
+    Kind: 0
+    RarityFilter: 0
+    Rarity: 0
+    Archetypes: 
+    RequiredTags: []
+    FilterByEnergyCost: 0
+    MinEnergyCost: 0
+    MaxEnergyCost: 0
+    CostReduction: 0
+    AttackBonus: 0
+    HealthBonus: 0
   BaseAttack: 3
   BaseHealth: 3
   Abilities: []
-  KillRewardGold: 0
+  KillRewardGold: 20

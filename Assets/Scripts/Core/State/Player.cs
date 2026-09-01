@@ -34,11 +34,9 @@ namespace Game.Core.State {
         // Shop-visit-scoped state, reset every time a Shop slot begins (see
         // CommandResolver.EnterShop). ShopReady latches once the player has
         // signaled they're done shopping; ShopRemovalsThisVisit drives the
-        // removal cost's scaling (5, 10, 15, ...); the free reroll is a
-        // one-shot per visit.
+        // removal cost's scaling (5, 10, 15, ...).
         public bool ShopReady;
         public int ShopRemovalsThisVisit;
-        public bool HasUsedFreeDeckRerollThisVisit;
 
         public Player(int id) {
             Id = id;

@@ -1,25 +1,20 @@
 {
-    "cardId": "landlord_01",
-    "type": "guy",
-    "displayName": "Landlord",
-    "energyCost": 4,
-    "goldCost": 40,
-    "description": "Steals 15 gold at the start of your turn.",
-    "rarity": "Epic",
-    "archetypes": [
-        "Assassin",
-        "Colorless"
-    ],
-    "tags": [
-        "assassin"
-    ],
-    "baseAttack": 5,
-    "baseHealth": 4,
-    "abilities": [
-        {
-            "id": "goldsteal",
-            "x": 15
-        }
-    ],
-    "killRewardGold": 0
+  "cardId": "landlord_01",
+  "type": "guy",
+  "displayName": "Landlord",
+  "energyCost": 4,
+  "goldCost": 40,
+  "description": "Steals 15 gold at the start of your turn.",
+  "rarity": "Epic",
+  "archetypes": ["Assassin", "Colorless"],
+  "tags": ["assassin"],
+  "baseAttack": 5,
+  "baseHealth": 4,
+  "abilities": [
+    {
+      "id": "goldsteal",
+      "x": 15
+    }
+  ],
+  "killRewardGold": 25
 }

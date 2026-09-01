@@ -37,7 +37,6 @@ namespace Game.Core.Events
     public record CardGrantedEvent(int PlayerId, int CardInstanceId, string DefinitionId, string Zone) : GameEvent;
     public record CardBoughtEvent(int PlayerId, int CardInstanceId, int Cost) : GameEvent;
     public record CardRemovedFromDeckEvent(int PlayerId, int CardInstanceId, int Cost) : GameEvent;
-    public record DeckRerolledEvent(int PlayerId) : GameEvent;
 
     public record AugmentOfferedEvent(int PlayerId, string[] OptionIds) : GameEvent;
     public record AugmentSelectedEvent(int PlayerId, string AugmentId) : GameEvent;

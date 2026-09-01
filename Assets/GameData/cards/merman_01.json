@@ -1,26 +1,20 @@
 {
-    "cardId": "merman_01",
-    "type": "guy",
-    "displayName": "Merman",
-    "energyCost": 2,
-    "goldCost": 0,
-    "description": "Precision. Aquatic.",
-    "rarity": "Common",
-    "archetypes": [
-        "Assassin",
-        "Colorless"
-    ],
-    "tags": [
-        "assassin",
-        "aquatic"
-    ],
-    "baseAttack": 1,
-    "baseHealth": 3,
-    "abilities": [
-        {
-            "id": "precision",
-            "x": 1
-        }
-    ],
-    "killRewardGold": 0
+  "cardId": "merman_01",
+  "type": "guy",
+  "displayName": "Merman",
+  "energyCost": 2,
+  "goldCost": 0,
+  "description": "Precision. Aquatic.",
+  "rarity": "Common",
+  "archetypes": ["Assassin", "Colorless"],
+  "tags": ["assassin", "aquatic"],
+  "baseAttack": 1,
+  "baseHealth": 3,
+  "abilities": [
+    {
+      "id": "precision",
+      "x": 1
+    }
+  ],
+  "killRewardGold": 25
 }

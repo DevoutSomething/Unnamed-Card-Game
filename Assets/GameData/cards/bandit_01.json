@@ -1,25 +1,20 @@
 {
-    "cardId": "bandit_01",
-    "type": "guy",
-    "displayName": "Bandit",
-    "energyCost": 1,
-    "goldCost": 0,
-    "description": "Hero Damage 1. He steals.",
-    "rarity": "Common",
-    "archetypes": [
-        "Assassin",
-        "Colorless"
-    ],
-    "tags": [
-        "assassin"
-    ],
-    "baseAttack": 2,
-    "baseHealth": 1,
-    "abilities": [
-        {
-            "id": "herodamage",
-            "x": 1
-        }
-    ],
-    "killRewardGold": 0
+  "cardId": "bandit_01",
+  "type": "guy",
+  "displayName": "Bandit",
+  "energyCost": 1,
+  "goldCost": 0,
+  "description": "Hero Damage 1. He steals.",
+  "rarity": "Common",
+  "archetypes": ["Assassin", "Colorless"],
+  "tags": ["assassin"],
+  "baseAttack": 2,
+  "baseHealth": 1,
+  "abilities": [
+    {
+      "id": "herodamage",
+      "x": 1
+    }
+  ],
+  "killRewardGold": 25
 }

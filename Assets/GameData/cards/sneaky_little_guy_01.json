@@ -1,28 +1,24 @@
 {
-    "cardId": "sneaky_little_guy_01",
-    "type": "guy",
-    "displayName": "Sneaky Little Guy",
-    "energyCost": 3,
-    "goldCost": 40,
-    "description": "Precision. Rob 10.",
-    "rarity": "Epic",
-    "archetypes": [
-        "Colorless"
-    ],
-    "tags": [
-        "classless"
-    ],
-    "baseAttack": 3,
-    "baseHealth": 2,
-    "abilities": [
-        {
-            "id": "precision",
-            "x": 1
-        },
-        {
-            "id": "rob",
-            "x": 10
-        }
-    ],
-    "killRewardGold": 0
+  "cardId": "sneaky_little_guy_01",
+  "type": "guy",
+  "displayName": "Sneaky Little Guy",
+  "energyCost": 3,
+  "goldCost": 40,
+  "description": "Precision. Rob 10.",
+  "rarity": "Epic",
+  "archetypes": ["Colorless"],
+  "tags": ["classless"],
+  "baseAttack": 3,
+  "baseHealth": 2,
+  "abilities": [
+    {
+      "id": "precision",
+      "x": 1
+    },
+    {
+      "id": "rob",
+      "x": 10
+    }
+  ],
+  "killRewardGold": 20
 }

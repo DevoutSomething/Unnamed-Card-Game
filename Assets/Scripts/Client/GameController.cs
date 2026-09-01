@@ -361,14 +361,6 @@ namespace Game.Client
             Redraw();
         }
 
-        /// <summary>"New Deck" button clicked: the once-per-visit free full reroll.</summary>
-        public void RerollDeck()
-        {
-            if (_server.State.IsGameOver) return;
-            _server.Submit(new RerollDeckCommand(ShopViewerId));
-            Redraw();
-        }
-
         /// <summary>"Done Shopping" button clicked.</summary>
         public void EndShop()
         {

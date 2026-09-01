@@ -1,20 +1,15 @@
 {
-    "cardId": "shieldbearer_01",
-    "type": "guy",
-    "displayName": "ShieldBearer",
-    "energyCost": 2,
-    "goldCost": 0,
-    "description": "",
-    "rarity": "Common",
-    "archetypes": [
-        "Tank",
-        "Colorless"
-    ],
-    "tags": [
-        "tank"
-    ],
-    "baseAttack": 3,
-    "baseHealth": 3,
-    "abilities": [],
-    "killRewardGold": 0
+  "cardId": "shieldbearer_01",
+  "type": "guy",
+  "displayName": "ShieldBearer",
+  "energyCost": 2,
+  "goldCost": 0,
+  "description": "",
+  "rarity": "Common",
+  "archetypes": ["Tank", "Colorless"],
+  "tags": ["tank"],
+  "baseAttack": 3,
+  "baseHealth": 3,
+  "abilities": [],
+  "killRewardGold": 20
 }

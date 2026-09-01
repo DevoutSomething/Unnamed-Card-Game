@@ -1,21 +1,15 @@
 {
-    "cardId": "mermaid_01",
-    "type": "guy",
-    "displayName": "Mermaid",
-    "energyCost": 1,
-    "goldCost": 0,
-    "description": "Aquatic.",
-    "rarity": "Common",
-    "archetypes": [
-        "Mage",
-        "Colorless"
-    ],
-    "tags": [
-        "mage",
-        "aquatic"
-    ],
-    "baseAttack": 1,
-    "baseHealth": 2,
-    "abilities": [],
-    "killRewardGold": 0
+  "cardId": "mermaid_01",
+  "type": "guy",
+  "displayName": "Mermaid",
+  "energyCost": 1,
+  "goldCost": 0,
+  "description": "Aquatic.",
+  "rarity": "Common",
+  "archetypes": ["Mage", "Colorless"],
+  "tags": ["mage", "aquatic"],
+  "baseAttack": 1,
+  "baseHealth": 2,
+  "abilities": [],
+  "killRewardGold": 20
 }

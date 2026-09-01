@@ -1,25 +1,20 @@
 {
-    "cardId": "spellslinger_01",
-    "type": "guy",
-    "displayName": "Spellslinger",
-    "energyCost": 3,
-    "goldCost": 0,
-    "description": "Double Tap.",
-    "rarity": "Common",
-    "archetypes": [
-        "Mage",
-        "Colorless"
-    ],
-    "tags": [
-        "mage"
-    ],
-    "baseAttack": 2,
-    "baseHealth": 2,
-    "abilities": [
-        {
-            "id": "doubletap",
-            "x": 1
-        }
-    ],
-    "killRewardGold": 0
+  "cardId": "spellslinger_01",
+  "type": "guy",
+  "displayName": "Spellslinger",
+  "energyCost": 3,
+  "goldCost": 0,
+  "description": "Double Tap.",
+  "rarity": "Common",
+  "archetypes": ["Mage", "Colorless"],
+  "tags": ["mage"],
+  "baseAttack": 2,
+  "baseHealth": 2,
+  "abilities": [
+    {
+      "id": "doubletap",
+      "x": 1
+    }
+  ],
+  "killRewardGold": 20
 }

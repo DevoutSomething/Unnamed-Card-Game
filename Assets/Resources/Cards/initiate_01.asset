@@ -15,12 +15,25 @@ MonoBehaviour:
   CardId: initiate_01
   DisplayName: Initiate
   EnergyCost: 4
-  GoldCost: 0
+  GoldCost: 25
   Description: Draw 2.
   Rarity: 1
   Archetypes: 0400000000000000
   Tags:
   - mage
+  Conjure:
+    Count: 0
+    Kind: 0
+    RarityFilter: 0
+    Rarity: 0
+    Archetypes: 
+    RequiredTags: []
+    FilterByEnergyCost: 0
+    MinEnergyCost: 0
+    MaxEnergyCost: 0
+    CostReduction: 0
+    AttackBonus: 0
+    HealthBonus: 0
   BaseAttack: 3
   BaseHealth: 2
   Abilities:

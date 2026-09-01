@@ -16,7 +16,7 @@ namespace Game.Core.Server
         private const int EnergyCapGrowthPerBlock = 1;
         private const int CardsDrawnPerBlock = 1;
         private const int DeckSize = 10;
-        private const int MaxHandSize = 7;
+        private const int MaxHandSize = 10;
         private const int ShopOfferCount = 10;
         private const int ShopRemoveBaseCost = 5;
         private const int ShopRemoveCostIncrement = 5;
@@ -44,7 +44,6 @@ namespace Game.Core.Server
                 case EndPhaseCommand e:  HandleEndPhase(state, e, events);  break;
                 case BuyCardCommand buy:            HandleBuyCard(state, buy, events);            break;
                 case RemoveCardFromDeckCommand rem: HandleRemoveCardFromDeck(state, rem, events);  break;
-                case RerollDeckCommand rr:          HandleRerollDeck(state, rr, events);           break;
                 case EndShopCommand es:             HandleEndShop(state, es, events);              break;
                 case ForceEndShopCommand fe:        HandleForceEndShop(state, fe, events);         break;
                 default:
@@ -476,17 +475,19 @@ namespace Game.Core.Server
         }
 
         /// <summary>
-        /// Deletes a card from the player's collection — the undrawn deck, their
-        /// hand, or a guy already deployed in a lane (see CardZones.OwnedCards).
-        /// Ownership is checked before any gold moves, so a bad id never charges.
+        /// Deletes a card from the player's DRAW PILE. Cards in hand and guys
+        /// already deployed are out of reach — the shop edits the pile you draw
+        /// from, nothing else. Membership is checked before any gold moves, so a
+        /// bad id never charges.
         /// </summary>
         private static void HandleRemoveCardFromDeck(GameState state, RemoveCardFromDeckCommand cmd, List<GameEvent> events)
         {
             if (!TryShopGuard(state, cmd, events, out var player)) return;
 
-            if (!CardZones.Owns(state, player, cmd.DeckCardInstanceId))
+            var card = player.Deck.Find(c => c.InstanceId == cmd.DeckCardInstanceId);
+            if (card == null)
             {
-                events.Add(new CommandRejectedEvent(cmd, "that card isn't one of yours"));
+                events.Add(new CommandRejectedEvent(cmd, "that card isn't in your draw pile"));
                 return;
             }
 
@@ -497,28 +498,9 @@ namespace Game.Core.Server
                 return;
             }
 
-            CardZones.TryRemoveOwned(state, player, cmd.DeckCardInstanceId);
+            player.Deck.Remove(card);
             player.ShopRemovalsThisVisit++;
-            events.Add(new CardRemovedFromDeckEvent(player.Id, cmd.DeckCardInstanceId, cost));
-        }
-
-        /// <summary>Once per shop visit, free: discards the whole deck (not hand)
-        /// and deals a fresh one, same as the opening starter deck.</summary>
-        private static void HandleRerollDeck(GameState state, RerollDeckCommand cmd, List<GameEvent> events)
-        {
-            if (!TryShopGuard(state, cmd, events, out var player)) return;
-
-            if (player.HasUsedFreeDeckRerollThisVisit)
-            {
-                events.Add(new CommandRejectedEvent(cmd, "already used your free deck reroll this shop visit"));
-                return;
-            }
-
-            player.Deck.Clear();
-            BuildStarterDeck(state, player);
-            state.Rng.Shuffle(player.Deck);
-            player.HasUsedFreeDeckRerollThisVisit = true;
-            events.Add(new DeckRerolledEvent(player.Id));
+            events.Add(new CardRemovedFromDeckEvent(player.Id, card.InstanceId, cost));
         }
 
         private static void HandleEndShop(GameState state, EndShopCommand cmd, List<GameEvent> events)
@@ -585,7 +567,7 @@ namespace Game.Core.Server
 
                 case SlotType.Shop:
                     EnterShop(state, events);
-                    break; // awaits BuyCard/RemoveCardFromDeck/RerollDeck/EndShop commands from both players
+                    break; // awaits BuyCard/RemoveCardFromDeck/EndShop commands from both players
                 case SlotType.Augment:
                     // TODO: these need player input eventually. Skipped until built.
                     AdvanceSlot(state, events);
@@ -734,7 +716,6 @@ namespace Game.Core.Server
             {
                 player.ShopReady = false;
                 player.ShopRemovalsThisVisit = 0;
-                player.HasUsedFreeDeckRerollThisVisit = false;
                 GenerateShopOffers(state, player, events);
             }
         }
@@ -781,8 +762,18 @@ namespace Game.Core.Server
             GameState state, Player player, CardDefinition source, List<GameEvent> events)
         {
             if (source == null || !source.Conjures) return;
+            ConjureFromSpec(state, player, source.Conjure, events);
+        }
 
-            var spec = source.Conjure;
+        /// <summary>
+        /// The spec-driven half of conjuring, so anything that needs to spawn a
+        /// filtered card can reuse it — a card's own Conjure block, or the
+        /// empty-draw-pile rule.
+        /// </summary>
+        private static void ConjureFromSpec(
+            GameState state, Player player, ConjureSpec spec, List<GameEvent> events)
+        {
+            if (spec == null || !spec.Conjures) return;
 
             var candidates = new List<CardDefinition>();
             foreach (var candidate in CardCatalogRuntime.Pool)
@@ -811,9 +802,12 @@ namespace Game.Core.Server
 
                 if (spec.HealthBonus > 0)
                 {
-                    card.MaxHealth = Math.Max(0, card.MaxHealth + spec.HealthBonus);
+                    // Both, or the conjured guy arrives pre-damaged: MaxHealth
+                    // alone would give a 1/1 a 1/3 stat line at 1 health.
+                    card.MaxHealth += spec.HealthBonus;
+                    card.CurrentHealth += spec.HealthBonus;
                 }
-                
+
                 player.cardsInHand.Add(card);
                 events.Add(new CardConjuredEvent(
                     player.Id, card.InstanceId, card.DefinitionId, card.CurrentCost));
@@ -841,10 +835,35 @@ namespace Game.Core.Server
             return def == null || def is GuyCardDefinition;
         }
 
+        /// <summary>
+        /// What an empty draw pile produces instead of a card. There's no
+        /// reshuffle and no fatigue in this game: run dry and you keep drawing
+        /// forever, just off the bottom of the barrel.
+        /// </summary>
+        private static readonly ConjureSpec EmptyDeckDraw = new ConjureSpec
+        {
+            Count = 1,
+            RarityFilter = ConjureRarityFilter.Exactly,
+            Rarity = Rarity.Common,
+        };
+
+        /// <summary>
+        /// Takes the top card of the draw pile, or — when the pile is empty —
+        /// conjures a random common instead. A conjured card emits
+        /// CardConjuredEvent rather than CardDrawnEvent, because it came from
+        /// the catalog and not from anything the player built.
+        /// </summary>
         private static void DrawCard(GameState state, Player player, List<GameEvent> events)
         {
-            if (player.Deck.Count == 0) return; //shuffle TODO
+            // Checked first: a full hand stops a draw whether or not the pile
+            // has anything left, so an empty pile can't conjure past the cap.
             if (player.cardsInHand.Count >= MaxHandSize) return;
+
+            if (player.Deck.Count == 0)
+            {
+                ConjureFromSpec(state, player, EmptyDeckDraw, events);
+                return;
+            }
 
             var card = player.Deck[0];
             player.Deck.RemoveAt(0);

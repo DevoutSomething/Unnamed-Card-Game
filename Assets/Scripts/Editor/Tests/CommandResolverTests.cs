@@ -556,7 +556,7 @@ namespace Game.Core.Tests
         }
 
         [Test]
-        public void RemoveCard_CanRemoveFromHand()
+        public void RemoveCard_CannotReachYourHand()
         {
             ConfigureShopCatalog();
             var state = NewGame();
@@ -568,13 +568,13 @@ namespace Game.Core.Tests
 
             var events = Submit(state, new RemoveCardFromDeckCommand(0, inHand.InstanceId));
 
-            AssertNoRejections(events);
-            Assert.IsFalse(p0.cardsInHand.Contains(inHand), "hand card removed");
-            Assert.AreEqual(999 - 5, p0.Gold);
+            AssertRejected(events);
+            Assert.IsTrue(p0.cardsInHand.Contains(inHand), "the shop only edits the draw pile");
+            Assert.AreEqual(999, p0.Gold, "and a rejected removal costs nothing");
         }
 
         [Test]
-        public void RemoveCard_CanRemoveDeployedGuyFromBoard()
+        public void RemoveCard_CannotReachADeployedGuy()
         {
             ConfigureShopCatalog();
             var state = NewGame();
@@ -582,53 +582,16 @@ namespace Game.Core.Tests
             var p0 = state.Players[0];
             p0.Gold = 999;
 
-            // Deploy a guy directly (test setup, not via commands) so there's
-            // something on the board to delete.
+            // Deploy a guy directly (test setup, not via commands).
             var sublane = state.Lanes[0].SublaneOf(0);
             var deployed = new CardInstance { InstanceId = 8100, DefinitionId = "shop_guy_0", OwnerId = 0 };
             sublane.Place(deployed, 0);
 
             var events = Submit(state, new RemoveCardFromDeckCommand(0, deployed.InstanceId));
 
-            AssertNoRejections(events);
-            Assert.IsNull(sublane.Slots[0], "lane slot freed by the removal");
-            Assert.AreEqual(999 - 5, p0.Gold);
-        }
-
-        [Test]
-        public void OwnedCards_SpansDeckHandAndBoard()
-        {
-            ConfigureShopCatalog();
-            var state = NewGame();
-            AdvanceToShop(state);
-            var p0 = state.Players[0];
-
-            var deployed = new CardInstance { InstanceId = 8200, DefinitionId = "shop_guy_0", OwnerId = 0 };
-            state.Lanes[2].SublaneOf(0).Place(deployed, 0);
-
-            var owned = CardZones.OwnedCards(state, p0);
-
-            Assert.AreEqual(p0.Deck.Count + p0.cardsInHand.Count + 1, owned.Count,
-                "collection = draw pile + hand + deployed guys");
-            CollectionAssert.Contains(owned.ConvertAll(o => o.Card), deployed);
-        }
-
-        [Test]
-        public void RerollDeck_IsFreeOnceThenRejected()
-        {
-            ConfigureShopCatalog();
-            var state = NewGame();
-            AdvanceToShop(state);
-            var p0 = state.Players[0];
-            int goldBefore = p0.Gold;
-
-            var events = Submit(state, new RerollDeckCommand(0));
-            AssertNoRejections(events);
-            Assert.AreEqual(goldBefore, p0.Gold, "reroll is free");
-            Assert.AreEqual(10, p0.Deck.Count, "fresh full deck");
-
-            var again = Submit(state, new RerollDeckCommand(0));
-            AssertRejected(again);
+            AssertRejected(events);
+            Assert.AreSame(deployed, sublane.Slots[0], "a guy already fighting is out of the shop's reach");
+            Assert.AreEqual(999, p0.Gold);
         }
 
         [Test]
@@ -656,7 +619,6 @@ namespace Game.Core.Tests
 
             AssertRejected(Submit(state, new BuyCardCommand(0, ShopCardInstanceId: 1)));
             AssertRejected(Submit(state, new RemoveCardFromDeckCommand(0, DeckCardInstanceId: 1)));
-            AssertRejected(Submit(state, new RerollDeckCommand(0)));
             AssertRejected(Submit(state, new EndShopCommand(0)));
         }
 
@@ -734,21 +696,56 @@ namespace Game.Core.Tests
         }
 
         [Test]
-        public void DrawCard_EmptyDeckIsSafeNoOp()
+        public void DrawCard_EmptyDeckWithNothingToConjureIsSafeNoOp()
         {
+            // No catalog configured, so the empty-pile conjure has no commons to
+            // draw from — it must degrade to doing nothing, not throw.
             var state = NewGame();
             state.Players[0].Deck.Clear();
             state.Players[1].Deck.Clear();
 
-            // walk through turns and a combat: every turn draw finds an empty deck
             Submit(state, new EndPhaseCommand(0));
             Submit(state, new EndPhaseCommand(1));
             Submit(state, new EndPhaseCommand(1));
             var events = Submit(state, new EndPhaseCommand(0));
 
             AssertNoRejections(events);
-            Assert.AreEqual(0, events.OfType<CardDrawnEvent>().Count(), "no draws from empty decks");
-            Assert.AreEqual(4, state.Players[0].cardsInHand.Count, "hand unchanged (dealt only)");
+            Assert.AreEqual(0, events.OfType<CardDrawnEvent>().Count(), "nothing left to draw");
+            Assert.AreEqual(0, events.OfType<CardConjuredEvent>().Count(), "and nothing to conjure");
+        }
+
+        [Test]
+        public void DrawCard_EmptyDeckConjuresARandomCommon()
+        {
+            // A catalog with one common and one rare: the empty-pile draw must
+            // only ever produce the common.
+            var common = ScriptableObject.CreateInstance<GuyCardDefinition>();
+            common.CardId = "a_common";
+            common.Rarity = Rarity.Common;
+            var rare = ScriptableObject.CreateInstance<GuyCardDefinition>();
+            rare.CardId = "a_rare";
+            rare.Rarity = Rarity.Rare;
+            CardCatalogRuntime.Configure(new CardDefinition[] { common, rare });
+
+            var state = NewGame();
+            var p0 = state.Players[0];
+            p0.Deck.Clear();
+            p0.cardsInHand.Clear();
+
+            Submit(state, new EndPhaseCommand(0));   // settle; draws happen at blocks
+            p0.Deck.Clear();
+            p0.cardsInHand.Clear();
+
+            // Walk a full block so both players draw.
+            Submit(state, new EndPhaseCommand(1));
+            Submit(state, new EndPhaseCommand(1));
+            var blockEvents = Submit(state, new EndPhaseCommand(0));   // -> Combat -> energy block draw
+
+            var conjured = blockEvents.OfType<CardConjuredEvent>().Where(e => e.PlayerId == 0).ToList();
+            Assert.IsNotEmpty(conjured, "an empty pile conjures instead of drawing nothing");
+            foreach (var e in conjured)
+                Assert.AreEqual("a_common", e.DefinitionId, "only commons come off an empty pile");
+            Assert.IsTrue(p0.cardsInHand.Exists(c => c.DefinitionId == "a_common"), "it lands in hand");
         }
     }
 }

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Game.Cards.SpellCardDefinition
   CardId: arcane_surge_01
   DisplayName: Arcane Surge
-  EnergyCost: 3
+  EnergyCost: 4
   GoldCost: 30
   Description: Conjure 3 random spells into your hand.
   Rarity: 1
@@ -25,12 +25,14 @@ MonoBehaviour:
     Kind: 2
     RarityFilter: 0
     Rarity: 0
-    Archetypes: []
+    Archetypes: 
     RequiredTags: []
     FilterByEnergyCost: 0
     MinEnergyCost: 0
     MaxEnergyCost: 0
     CostReduction: 0
+    AttackBonus: 0
+    HealthBonus: 0
   Target: 0
   DamageAmount: 0
   HealAmount: 0

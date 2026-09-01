@@ -1,25 +1,20 @@
 {
-    "cardId": "monk_01",
-    "type": "guy",
-    "displayName": "Monk",
-    "energyCost": 3,
-    "goldCost": 0,
-    "description": "Growth 1.",
-    "rarity": "Common",
-    "archetypes": [
-        "Bruiser",
-        "Colorless"
-    ],
-    "tags": [
-        "bruiser"
-    ],
-    "baseAttack": 1,
-    "baseHealth": 3,
-    "abilities": [
-        {
-            "id": "growth",
-            "x": 1
-        }
-    ],
-    "killRewardGold": 0
+  "cardId": "monk_01",
+  "type": "guy",
+  "displayName": "Monk",
+  "energyCost": 3,
+  "goldCost": 0,
+  "description": "Growth 1.",
+  "rarity": "Common",
+  "archetypes": ["Bruiser", "Colorless"],
+  "tags": ["bruiser"],
+  "baseAttack": 1,
+  "baseHealth": 3,
+  "abilities": [
+    {
+      "id": "growth",
+      "x": 1
+    }
+  ],
+  "killRewardGold": 10
 }

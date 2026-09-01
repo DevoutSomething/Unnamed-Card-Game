@@ -1,25 +1,20 @@
 {
-    "cardId": "investor_01",
-    "type": "guy",
-    "displayName": "Investor",
-    "energyCost": 2,
-    "goldCost": 25,
-    "description": "Gain 10 gold at the start of your turn.",
-    "rarity": "Rare",
-    "archetypes": [
-        "Assassin",
-        "Colorless"
-    ],
-    "tags": [
-        "assassin"
-    ],
-    "baseAttack": 2,
-    "baseHealth": 2,
-    "abilities": [
-        {
-            "id": "goldgen",
-            "x": 10
-        }
-    ],
-    "killRewardGold": 0
+  "cardId": "investor_01",
+  "type": "guy",
+  "displayName": "Investor",
+  "energyCost": 2,
+  "goldCost": 25,
+  "description": "Gain 10 gold at the start of your turn.",
+  "rarity": "Rare",
+  "archetypes": ["Assassin", "Colorless"],
+  "tags": ["assassin"],
+  "baseAttack": 2,
+  "baseHealth": 2,
+  "abilities": [
+    {
+      "id": "goldgen",
+      "x": 10
+    }
+  ],
+  "killRewardGold": 30
 }

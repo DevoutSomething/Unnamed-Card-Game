@@ -24,7 +24,6 @@ public record EndPhaseCommand(int PlayerId) : Command(PlayerId);
 
 public record BuyCardCommand(int PlayerId, int ShopCardInstanceId) : Command(PlayerId);
 public record RemoveCardFromDeckCommand(int PlayerId, int DeckCardInstanceId) : Command(PlayerId);
-public record RerollDeckCommand(int PlayerId) : Command(PlayerId);
 public record EndShopCommand(int PlayerId) : Command(PlayerId);
 
 /// <summary>Polled by every client's GameController.Update() while the shop's

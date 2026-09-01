@@ -22,7 +22,20 @@ MonoBehaviour:
   Tags:
   - bruiser
   - aquatic
+  Conjure:
+    Count: 0
+    Kind: 0
+    RarityFilter: 0
+    Rarity: 0
+    Archetypes: 
+    RequiredTags: []
+    FilterByEnergyCost: 0
+    MinEnergyCost: 0
+    MaxEnergyCost: 0
+    CostReduction: 0
+    AttackBonus: 0
+    HealthBonus: 0
   BaseAttack: 5
   BaseHealth: 6
   Abilities: []
-  KillRewardGold: 0
+  KillRewardGold: 100
