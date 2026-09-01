@@ -232,6 +232,72 @@ namespace Game.Core.Tests
             Assert.AreEqual(10, safe.CurrentHealth, "lane 4 is plain");
         }
 
+        // ---------- gold generation lane ----------
+
+        /// Walks from the opening slot through the first Combat, which is what
+        /// triggers the energy block (and with it every lane upkeep effect).
+        private static void AdvanceThroughFirstCombat(GameState state)
+        {
+            Submit(state, new EndPhaseCommand(0));   // slot 0 -> 1
+            Submit(state, new EndPhaseCommand(1));   // slot 1 -> 2
+            Submit(state, new EndPhaseCommand(1));   // slot 2 -> 3
+            Submit(state, new EndPhaseCommand(0));   // slot 3 -> Combat -> energy reset
+        }
+
+        [Test]
+        public void GoldmineLane_PaysEachPlayerForTheirOwnGuys_AtTheEnergyReset()
+        {
+            ConfigureVanillaGuys();
+            var state = NewGameWithLane(LaneCatalog.Goldmine, laneIndex: 1);
+            var p0 = state.Players[0];
+            var p1 = state.Players[1];
+
+            // 0 attack so combat can't kill anyone and skew the head count.
+            Deploy(state, playerId: 0, laneIndex: 1, slot: 0, attack: 0, health: 10);
+            Deploy(state, playerId: 0, laneIndex: 1, slot: 1, attack: 0, health: 10);
+            Deploy(state, playerId: 1, laneIndex: 1, slot: 1, attack: 0, health: 10);
+
+            int p0Before = p0.Gold, p1Before = p1.Gold;
+
+            AdvanceThroughFirstCombat(state);
+
+            Assert.AreEqual(p0Before + 10, p0.Gold, "5 gold x P0's 2 guys");
+            Assert.AreEqual(p1Before + 5, p1.Gold, "5 gold x P1's 1 guy — both sides mine at once");
+        }
+
+        [Test]
+        public void GoldmineLane_DoesNotPayOnEveryActionSlot()
+        {
+            ConfigureVanillaGuys();
+            var state = NewGameWithLane(LaneCatalog.Goldmine, laneIndex: 1);
+            var p0 = state.Players[0];
+            Deploy(state, playerId: 0, laneIndex: 1, slot: 1, attack: 0, health: 10);
+
+            int before = p0.Gold;
+
+            // Three action slots pass — but no combat, so no energy reset.
+            Submit(state, new EndPhaseCommand(0));
+            Submit(state, new EndPhaseCommand(1));
+            Submit(state, new EndPhaseCommand(1));
+
+            Assert.AreEqual(before, p0.Gold,
+                "mining is tied to the energy reset, not to each player's turn");
+        }
+
+        [Test]
+        public void GoldmineLane_PaysNothingWhenEmpty()
+        {
+            ConfigureVanillaGuys();
+            var state = NewGameWithLane(LaneCatalog.Goldmine, laneIndex: 1);
+            int p0Before = state.Players[0].Gold;
+            int p1Before = state.Players[1].Gold;
+
+            AdvanceThroughFirstCombat(state);
+
+            Assert.AreEqual(p0Before, state.Players[0].Gold, "an empty mine pays nobody");
+            Assert.AreEqual(p1Before, state.Players[1].Gold);
+        }
+
         // ---------- assignment ----------
 
         [Test]

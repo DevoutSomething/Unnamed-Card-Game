@@ -45,10 +45,18 @@ namespace Game.Core.Lanes
             DrawOnGuyPlayed = 1,
         };
 
+         public static readonly LaneDefinition Goldmine = new LaneDefinition
+        {
+            Id = "goldmine",
+            DisplayName = "Goldmine",
+            Description = "After each combat, mine 5 gold per guy you have here.",
+            GoldGeneration = 5,
+        };
+
 
         static readonly List<LaneDefinition> _all = new List<LaneDefinition>
         {
-            Withering, Bulwark, Volcanic, Library,
+            Withering, Bulwark, Volcanic, Library, Goldmine
         };
 
         public static IReadOnlyList<LaneDefinition> All => _all;

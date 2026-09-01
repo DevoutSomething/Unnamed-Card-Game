@@ -29,6 +29,11 @@ namespace Game.Core.Lanes
         /// <summary>Cards the controller draws when they play a guy here.</summary>
         public int DrawOnGuyPlayed;
 
+        /// <summary>Gold paid to a player per living guy they hold in this lane,
+        /// on the same beat as DamageAllOnEnergyReset — once per energy block
+        /// (twice a rotation), not once per action slot.</summary>
+        public int GoldGeneration;
+
         public bool HasStatModifier => AttackModifier != 0 || HealthModifier != 0;
     }
 }

@@ -668,27 +668,52 @@ namespace Game.Core.Server
         }
 
         /// <summary>
-        /// Lane hazards that fire when an energy block begins (i.e. just after
-        /// each combat): damage to every guy in the lane, both sides. Dealt as
-        /// DIRECT damage, so it provokes no thorns and pays out no kill gold —
-        /// the lane isn't a guy attacking.
+        /// Every lane effect that fires when an energy block begins (i.e. just
+        /// after each combat) — twice per rotation, for both players at once,
+        /// which is what makes these the lane's "upkeep" rather than a per-turn
+        /// trigger:
+        ///
+        ///   - mining: each player is paid per living guy they hold in the lane
+        ///   - hazards: damage to every guy in the lane, both sides
+        ///
+        /// Hazard damage is DIRECT damage, so it provokes no thorns and pays out
+        /// no kill gold — the lane isn't a guy attacking.
         /// </summary>
         private static void ApplyLaneEnergyResetEffects(GameState state, List<GameEvent> events)
         {
             foreach (var lane in state.Lanes)
             {
                 var def = LaneCatalog.Get(lane.LaneTypeId);
-                if (def == null || def.DamageAllOnEnergyReset <= 0) continue;
+                if (def == null) continue;
+                if (def.GoldGeneration <= 0 && def.DamageAllOnEnergyReset <= 0) continue;
 
                 events.Add(new LaneEffectTriggeredEvent(lane.Position, def.Id));
 
-                foreach (var sublane in new[] { lane.P1, lane.P2 })
-                    foreach (var card in sublane.Slots)
-                        if (card != null && card.CurrentHealth > 0)
-                            MutationHelper.DealDirectDamage(
-                                card, def.DamageAllOnEnergyReset, sourceInstanceId: -1, events);
+                // Mining pays out first, so a guy standing in a lane that both
+                // mines AND burns still earns for the turn it dies on.
+                if (def.GoldGeneration > 0)
+                {
+                    foreach (var player in state.Players)
+                    {
+                        int miners = 0;
+                        foreach (var card in lane.SublaneOf(player.Id).Cards)
+                            if (card.CurrentHealth > 0) miners++;
 
-                CombatResolver.ClearDeadInLane(lane, events);
+                        if (miners > 0)
+                            MutationHelper.GiveGold(player, def.GoldGeneration * miners, events);
+                    }
+                }
+
+                if (def.DamageAllOnEnergyReset > 0)
+                {
+                    foreach (var sublane in new[] { lane.P1, lane.P2 })
+                        foreach (var card in sublane.Slots)
+                            if (card != null && card.CurrentHealth > 0)
+                                MutationHelper.DealDirectDamage(
+                                    card, def.DamageAllOnEnergyReset, sourceInstanceId: -1, events);
+
+                    CombatResolver.ClearDeadInLane(lane, events);
+                }
             }
         }
 
