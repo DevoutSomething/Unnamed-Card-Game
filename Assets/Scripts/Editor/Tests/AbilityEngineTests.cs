@@ -474,5 +474,42 @@ namespace Game.Core.Tests
                 b.Players[0].Deck.Select(c => c.DefinitionId).ToList(),
                 "same seed must produce identical decks");
         }
+
+        // ---------- bloodprice ----------
+
+        [Test]
+        public void BloodPrice_OwnerLosesHealthDirectly_NotAsDamage()
+        {
+            var state = new GameState(seed: 1);
+            var player = state.Players[0];
+            player.CurrentEnergy = 1;
+            int startHealth = player.Health;
+
+            // DefinitionId is in no catalog, so IsGuyCard treats it as a guy and
+            // it plays through the guy path where OnPlay abilities fire. Slot 0 is
+            // P0's main action slot (Rotation.IsMainActionSlot[0]), so a guy is legal.
+            var guy = new CardInstance
+            {
+                InstanceId = state.NextCardInstanceId++,
+                DefinitionId = "bloodprice_test",
+                OwnerId = 0,
+                CurrentAttack = 1,
+                CurrentHealth = 1,
+                MaxHealth = 1,
+                CurrentCost = 0,
+            };
+            guy.Abilities.Add(new AbilityRef { Id = "bloodprice", X = 3 });
+            player.cardsInHand.Add(guy);
+
+            var events = CommandResolver.Resolve(
+                state, new PlayCardCommand(0, guy.InstanceId, LaneIndex: 0));
+
+            Assert.IsFalse(events.OfType<CommandRejectedEvent>().Any(), "play should be accepted");
+            Assert.AreEqual(startHealth - 3, player.Health, "owner pays 3 health on play");
+            Assert.AreEqual(1, events.OfType<PlayerLostHealthEvent>().Count(),
+                "emits exactly one PlayerLostHealthEvent");
+            Assert.IsFalse(events.OfType<PlayerDamagedEvent>().Any(),
+                "blood price is a cost, not damage — no PlayerDamagedEvent");
+        }
     }
 }

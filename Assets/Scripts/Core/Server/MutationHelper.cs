@@ -202,6 +202,26 @@ namespace Game.Core.Server
             events.Add(new PlayerDamagedEvent(target.Id, amount, target.Health));
         }
 
+        /// <summary>
+        /// Drains player health as a cost (e.g. Blood Price), clamped at 0.
+        /// Deliberately NOT routed through DealCombatDamageToPlayer: this is a
+        /// life PAYMENT, not damage, so it emits PlayerLostHealthEvent and must
+        /// never trip a "when the player takes damage" reaction. A lethal cost is
+        /// allowed — Health can reach 0, which ends the game like any other.
+        /// </summary>
+        public static void LosePlayerHealth(Player target, int amount, List<GameEvent> events)
+        {
+            if (amount <= 0) return;
+
+            target.Health -= amount;
+            if (target.Health < 0)
+            {
+                target.Health = 0;
+            }
+
+            events.Add(new PlayerLostHealthEvent(target.Id, amount, target.Health));
+        }
+
         public static void GiveGold(Player player, int amount, List<GameEvent> events)
         {
             if (amount <= 0) return;

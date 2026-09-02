@@ -12,9 +12,9 @@ namespace Game.Core.Abilities
         OnKill,         // when this card kills another card
         OnDeath,        // when this card dies
         OnHealed,       // when this card actually recovers health
-        StartOfCombat,
+        StartOfCombat,  // when combat phase beings, prior to attacks
         StartOfTurn,    // when the owner's action slot begins (regen keywords)
-        EndOfTurn,
+        EndOfTurn, // when the owner's action slot ends
     }
 
     /// <summary>What an ability does. Magnitude comes from AbilityRef.X.</summary>
@@ -22,13 +22,14 @@ namespace Game.Core.Abilities
     {
         ReduceDamage,   // take X less damage
         DealDamage,     // deal X damage to the target
-        Heal,
-        BuffAttack,
-        BuffHealth,
-        BuffStats,      // +X attack AND +X health (growth, mending)
-        GainGold,
+        Heal,          // restore X health to the target
+        LoseHealth,    // lose X player health (blood price)
+        BuffAttack,    //increase targets attack by X
+        BuffHealth,    //increase targets health by X
+        BuffStats,      // +X attack AND +X health (growth)
+        GainGold,       // gain X gold
         StealGold,      // steal gold from the enemy player, scaled by damage dealt to them (rob)
-        DrawCard,
+        DrawCard,      // draw x cards from owners deck to hand
         HitAllInLane,   // this card's attacks hit every enemy guy in the lane (pierce)
         Overkill,       // excess attack damage carries over to the enemy player
         ExtraAttack,    // this card attacks X extra times (double tap)

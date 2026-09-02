@@ -20,6 +20,11 @@ namespace Game.Core.Events
     public record CardMovedEvent(int CardInstanceId, int FromLane, int FromSlot, int ToLane, int ToSlot) : GameEvent;
 
     public record PlayerDamagedEvent(int PlayerId, int Amount, int DamageTaken) : GameEvent;
+    /// <summary>A direct, non-combat loss of player health (e.g. Blood Price).
+    /// Distinct from PlayerDamagedEvent on purpose: it is a life PAYMENT, not
+    /// damage, so it must never be treated as damage (no "took X" combat
+    /// summary, no future "when the player takes damage" reactions).</summary>
+    public record PlayerLostHealthEvent(int PlayerId, int Amount, int RemainingHealth) : GameEvent;
     public record PlayerHealedEvent(int PlayerId, int Amount, int DamageHealed) : GameEvent;
     public record CardDamagedEvent(int CardInstanceId, int Amount, int DamageTaken) : GameEvent;
     public record CardHealedEvent(int CardInstanceId, int Amount, int DamageHealed) : GameEvent;

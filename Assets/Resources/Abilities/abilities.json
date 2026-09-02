@@ -190,5 +190,16 @@
       "costPerX": 0.5,
       "flatCost": 0.5
     }
+    ,
+    {
+      "abilityId": "bloodprice",
+      "displayName": "Blood Price",
+      "description": "As an additional cost to play this card, lose {X} health.",
+      "trigger": "OnPlay",
+      "effect": "LoseHealth",
+      "target": "Owner",
+      "costPerX": 1.0,
+      "flatCost": 0.25
+    }
   ]
 }

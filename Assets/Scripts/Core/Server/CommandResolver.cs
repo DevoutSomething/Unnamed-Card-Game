@@ -267,6 +267,16 @@ namespace Game.Core.Server
                 DrawCard(state, player, events);
             }
 
+            // Blood Price: an additional cost paid on play — the owner loses X
+            // health DIRECTLY (not as damage), so it never trips a "when the
+            // player takes damage" reaction. See MutationHelper.LosePlayerHealth.
+            int bloodPrice = AbilityRuntime.Sum(
+                card, AbilityTrigger.OnPlay, AbilityEffect.LoseHealth, AbilityTarget.Owner);
+            if (bloodPrice > 0)
+            {
+                MutationHelper.LosePlayerHealth(player, bloodPrice, events);
+            }
+
             if (laneDef != null && isGuy && laneDef.DrawOnGuyPlayed > 0)
             {
                 events.Add(new LaneEffectTriggeredEvent(cmd.LaneIndex, laneDef.Id));
