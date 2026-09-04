@@ -160,7 +160,10 @@ namespace Game.Core.Server
         /// swings go straight at the enemy player; pierce swings hit every living
         /// enemy guy in the lane; otherwise the front-most guy takes it, with
         /// overkill overflow spilling onto the player. Rob steals gold scaled by
-        /// any damage this attack deals to the player. Extra swings stop if the
+        /// any damage this attack deals to the player. Lifesteal heals the attacker
+        /// for X per point of combat damage it dealt this attack (guys + player),
+        /// applied once at the end so a surviving attacker is topped up but a corpse
+        /// (e.g. killed by thorns) is not resurrected. Extra swings stop if the
         /// attacker died (e.g. to thorns) — only the first swing is owed by the
         /// simultaneity rule.
         /// </summary>
@@ -180,15 +183,23 @@ namespace Game.Core.Server
                 attacker, AbilityTrigger.OnAttack, AbilityEffect.StealGold, AbilityTarget.Owner);
             bool overkill = AbilityRuntime.Sum(
                 attacker, AbilityTrigger.OnAttack, AbilityEffect.Overkill, AbilityTarget.EnemyPlayer) > 0;
+            int lifestealPerX = AbilityRuntime.Sum(
+                attacker, AbilityTrigger.OnAttack, AbilityEffect.LifeSteal, AbilityTarget.Self);
 
             Player opposingPlayer = state.Players[opposingSublane.PlayerId];
             Player owner = state.Players[attacker.OwnerId];
+
+            // Combat damage this attack actually put on health pools (guys + player),
+            // summed across every swing — the base lifesteal heals from.
+            int lifestealDamage = 0;
 
             // Every point of combat damage this attack puts on the player also
             // triggers rob: steal damage * X gold (capped by the victim's purse).
             void HitPlayer(int damage)
             {
+                int healthBefore = opposingPlayer.Health;
                 MutationHelper.DealCombatDamageToPlayer(opposingPlayer, damage, events);
+                lifestealDamage += healthBefore - opposingPlayer.Health;
                 if (robPerDamage > 0 && damage > 0)
                 {
                     MutationHelper.StealGold(owner, opposingPlayer, damage * robPerDamage, events);
@@ -218,7 +229,11 @@ namespace Game.Core.Server
                     if (laneTargets.Count > 0)
                     {
                         foreach (var laneTarget in laneTargets)
+                        {
+                            int healthBefore = laneTarget.CurrentHealth;
                             MutationHelper.DealCombatDamage(laneTarget, attacker, events);
+                            lifestealDamage += healthBefore - laneTarget.CurrentHealth;
+                        }
                         continue;
                     }
                     // empty lane: fall through to the normal face hit
@@ -227,16 +242,26 @@ namespace Game.Core.Server
                 CardInstance target = FindFrontMostCard(opposingSublane);
                 if (target != null)
                 {
+                    int healthBefore = target.CurrentHealth;
                     int overflow = MutationHelper.DealCombatDamage(target, attacker, events);
+                    lifestealDamage += healthBefore - target.CurrentHealth;
                     if (overkill && overflow > 0)
                     {
-                        HitPlayer(overflow);
+                        HitPlayer(overflow);   // HitPlayer also folds the overflow into lifestealDamage
                     }
                 }
                 else
                 {
                     HitPlayer(attacker.CurrentAttack);
                 }
+            }
+
+            // Lifesteal pays out once, after the last swing. Guarded on the attacker
+            // still being alive so a card that died mid-attack (e.g. to thorns) is
+            // not healed back from the dead.
+            if (lifestealPerX > 0 && lifestealDamage > 0 && attacker.CurrentHealth > 0)
+            {
+                MutationHelper.HealCard(attacker, lifestealDamage * lifestealPerX, events);
             }
         }
 

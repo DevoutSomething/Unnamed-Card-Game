@@ -511,5 +511,48 @@ namespace Game.Core.Tests
             Assert.IsFalse(events.OfType<PlayerDamagedEvent>().Any(),
                 "blood price is a cost, not damage — no PlayerDamagedEvent");
         }
+
+        // ---------- lifesteal ----------
+
+        [Test]
+        public void Lifesteal_HealsAttackerForCombatDamageDealt()
+        {
+            var state = new GameState(seed: 1);
+            var attacker = PlaceGuy(state, 0, 0, 0, attack: 3, health: 10, abilities: ("lifesteal", 1));
+            attacker.CurrentHealth = 5;   // damaged so the heal is visible under the cap
+            var blocker = PlaceGuy(state, 1, 0, 0, attack: 0, health: 10);
+
+            RunCombat(state);
+
+            Assert.AreEqual(7, blocker.CurrentHealth, "blocker took the 3 attack");
+            Assert.AreEqual(8, attacker.CurrentHealth, "healed for damage dealt (3) * X (1): 5 -> 8");
+        }
+
+        [Test]
+        public void Lifesteal_HealIsCappedAtMaxHealthAndScalesWithX()
+        {
+            var state = new GameState(seed: 1);
+            var attacker = PlaceGuy(state, 0, 0, 0, attack: 3, health: 10, abilities: ("lifesteal", 2));
+            attacker.CurrentHealth = 9;   // wants 3 * X(2) = 6, only 1 fits under MaxHealth
+            PlaceGuy(state, 1, 0, 0, attack: 0, health: 10);
+
+            RunCombat(state);
+
+            Assert.AreEqual(10, attacker.CurrentHealth, "lifesteal heal is capped at MaxHealth");
+        }
+
+        [Test]
+        public void Lifesteal_DoesNotReviveAnAttackerKilledByThorns()
+        {
+            var state = new GameState(seed: 1);
+            // Attacker (2 hp) deals 3 to the blocker but takes 5 thorns back and dies.
+            PlaceGuy(state, 0, 0, 0, attack: 3, health: 2, abilities: ("lifesteal", 5));
+            PlaceGuy(state, 1, 0, 0, attack: 0, health: 5, abilities: ("thorns", 5));
+
+            RunCombat(state);
+
+            Assert.IsNull(state.Lanes[0].P1.Slots[0],
+                "attacker died to thorns mid-attack; lifesteal must not heal a corpse back to life");
+        }
     }
 }

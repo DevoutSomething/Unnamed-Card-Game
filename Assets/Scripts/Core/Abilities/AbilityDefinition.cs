@@ -23,6 +23,7 @@ namespace Game.Core.Abilities
         ReduceDamage,   // take X less damage
         DealDamage,     // deal X damage to the target
         Heal,          // restore X health to the target
+        LifeSteal,      // attacker heals for X per point of combat damage it deals (lifesteal)
         LoseHealth,    // lose X player health (blood price)
         BuffAttack,    //increase targets attack by X
         BuffHealth,    //increase targets health by X

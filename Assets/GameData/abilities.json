@@ -199,6 +199,16 @@
       "target": "Owner",
       "costPerX": 1.0,
       "flatCost": 0.25
+    },
+    {
+      "abilityId": "lifesteal",
+      "displayName": "Lifesteal",
+      "description": "Heals this guy for {X}× the combat damage it deals.",
+      "trigger": "OnAttack",
+      "effect": "LifeSteal",
+      "target": "Self",
+      "costPerX": 1.0,
+      "flatCost": 0.25
     }
   ]
 }
