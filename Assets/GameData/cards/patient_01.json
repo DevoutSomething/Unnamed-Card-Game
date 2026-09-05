@@ -6,8 +6,13 @@
   "goldCost": 0,
   "description": "When you heal this, it gains +1/+1.",
   "rarity": "Common",
-  "archetypes": ["Healer", "Colorless"],
-  "tags": ["healer"],
+  "heroes": [],
+  "archetypes": [
+    "Healer",
+    "Colorless"
+  ],
+  "tribes": [],
+  "tags": [],
   "baseAttack": 2,
   "baseHealth": 2,
   "abilities": [

@@ -19,6 +19,8 @@ MonoBehaviour:
   Description: Draw 2 cards and heal a guy for 4.
   Rarity: 1
   Archetypes: 05000000
+  Heroes: []
+  Tribes: []
   Tags: []
   Conjure:
     Count: 0

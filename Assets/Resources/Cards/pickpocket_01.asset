@@ -19,8 +19,9 @@ MonoBehaviour:
   Description: Rob 3.
   Rarity: 0
   Archetypes: 0300000000000000
-  Tags:
-  - assassin
+  Heroes: []
+  Tribes: []
+  Tags: []
   Conjure:
     Count: 0
     Kind: 0

@@ -19,6 +19,8 @@ MonoBehaviour:
   Description: Blood Price 1.
   Rarity: 0
   Archetypes: 
+  Heroes: []
+  Tribes: []
   Tags: []
   Conjure:
     Count: 0

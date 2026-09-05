@@ -6,8 +6,14 @@
   "goldCost": 40,
   "description": "Precision. Rob 10.",
   "rarity": "Epic",
-  "archetypes": ["Colorless"],
-  "tags": ["classless"],
+  "heroes": [],
+  "archetypes": [
+    "Colorless"
+  ],
+  "tribes": [],
+  "tags": [
+    "classless"
+  ],
   "baseAttack": 3,
   "baseHealth": 2,
   "abilities": [

@@ -6,8 +6,17 @@
   "goldCost": 40,
   "description": "Aquatic.",
   "rarity": "Epic",
-  "archetypes": ["Bruiser", "Colorless"],
-  "tags": ["bruiser", "aquatic"],
+  "heroes": [
+    "oceanlord"
+  ],
+  "archetypes": [
+    "Bruiser",
+    "Colorless"
+  ],
+  "tribes": [
+    "aquatic"
+  ],
+  "tags": [],
   "baseAttack": 5,
   "baseHealth": 6,
   "abilities": [],

@@ -1,20 +1,22 @@
 {
-    "cardId": "basic_barbarian_01",
-    "type": "guy",
-    "displayName": "Basic Barbarian",
-    "energyCost": 0,
-    "goldCost": 0,
-    "description": "Blood Price 1.",
-    "rarity": "Common",
-    "archetypes": [],
-    "tags": [],
-    "baseAttack": 2,
-    "baseHealth": 1,
-    "abilities": [
-        {
-            "id": "bloodprice",
-            "x": 1
-        }
-    ],
-    "killRewardGold": 5
+  "cardId": "basic_barbarian_01",
+  "type": "guy",
+  "displayName": "Basic Barbarian",
+  "energyCost": 0,
+  "goldCost": 0,
+  "description": "Blood Price 1.",
+  "rarity": "Common",
+  "heroes": [],
+  "archetypes": [],
+  "tribes": [],
+  "tags": [],
+  "baseAttack": 2,
+  "baseHealth": 1,
+  "abilities": [
+    {
+      "id": "bloodprice",
+      "x": 1
+    }
+  ],
+  "killRewardGold": 5
 }

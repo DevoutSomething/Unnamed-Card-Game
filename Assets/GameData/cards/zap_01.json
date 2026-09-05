@@ -6,7 +6,11 @@
   "goldCost": 15,
   "description": "Deal 2 damage to anything.",
   "rarity": "Common",
-  "archetypes": ["Mage"],
+  "heroes": [],
+  "archetypes": [
+    "Mage"
+  ],
+  "tribes": [],
   "tags": [],
   "spellTarget": "AnyCharacter",
   "damageAmount": 2

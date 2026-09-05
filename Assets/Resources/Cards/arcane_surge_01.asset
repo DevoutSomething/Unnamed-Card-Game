@@ -19,6 +19,8 @@ MonoBehaviour:
   Description: Conjure 3 random spells into your hand.
   Rarity: 1
   Archetypes: 04000000
+  Heroes: []
+  Tribes: []
   Tags: []
   Conjure:
     Count: 3

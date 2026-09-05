@@ -64,6 +64,15 @@ namespace Game.Core.Server
                 if (cmd.HeroIds != null && player.Id >= 0 && player.Id < cmd.HeroIds.Length)
                     player.HeroId = cmd.HeroIds[player.Id];
 
+                // Snapshot the hero's class onto the player so the shop (and anything
+                // else) reads a local field, not the hero registry. Empty when no
+                // hero was picked or the hero has no archetypes authored.
+                player.Archetypes.Clear();
+                if (!string.IsNullOrEmpty(player.HeroId) &&
+                    HeroRuntime.Database.TryGet(player.HeroId, out var heroClass) &&
+                    heroClass.Archetypes != null)
+                    player.Archetypes.AddRange(heroClass.Archetypes);
+
                 BuildStarterDeck(state, player);
                 state.Rng.Shuffle(player.Deck);
 
@@ -768,9 +777,10 @@ namespace Game.Core.Server
         }
 
         /// <summary>
-        /// 10 random offers from non-Common cards (design_plan: "10 cards
-        /// available from a random pool of non common cards" — later filtered
-        /// further by the player's character, for now the whole non-Common pool).
+        /// 10 random offers drawn from the cards that fit this player's hero: its
+        /// signed cards, cards sharing one of its archetypes, plus neutral cards
+        /// (no hero and no class) which every hero can buy. See <see cref="ShopOffersCard"/>.
+        /// Rarity is not a filter — neutral commons are meant to show.
         /// </summary>
         private static void GenerateShopOffers(GameState state, Player player, List<GameEvent> events)
         {
@@ -778,7 +788,7 @@ namespace Game.Core.Server
 
             var pool = new List<CardDefinition>();
             foreach (var def in CardCatalogRuntime.Pool)
-                if (def.Rarity != Rarity.Common)
+                if (ShopOffersCard(def, player))
                     pool.Add(def);
 
             // Drawn independently (with replacement) rather than via Rng.PickN:
@@ -795,6 +805,47 @@ namespace Game.Core.Server
             }
 
             events.Add(new ShopRefreshedEvent(player.Id));
+        }
+
+        /// <summary>
+        /// Whether a card belongs in this player's shop. Three ways in:
+        ///   * neutral — no hero and no class (Colorless-only counts as no class),
+        ///     so it shows in every hero's shop;
+        ///   * signed — the card lists this player's hero;
+        ///   * class match — the card shares a real (non-Colorless) archetype with
+        ///     the hero (player.Archetypes, snapshotted at StartGame).
+        /// </summary>
+        private static bool ShopOffersCard(CardDefinition def, Player player)
+        {
+            if (def == null) return false;
+
+            bool hasHero = def.Heroes != null && def.Heroes.Count > 0;
+            bool hasClass = HasNonColorlessArchetype(def);
+
+            // Neutral cards are available to everyone.
+            if (!hasHero && !hasClass) return true;
+
+            // Cards signed to this specific hero.
+            if (hasHero && !string.IsNullOrEmpty(player.HeroId) && def.Heroes.Contains(player.HeroId))
+                return true;
+
+            // Cards that share one of the hero's archetypes (Colorless never matches).
+            if (player.Archetypes != null && def.Archetypes != null)
+                foreach (var archetype in player.Archetypes)
+                    if (archetype != Archetype.Colorless && def.Archetypes.Contains(archetype))
+                        return true;
+
+            return false;
+        }
+
+        /// <summary>True if the card has any archetype other than Colorless. Colorless
+        /// means "no class", so a Colorless-only (or empty) card is treated as neutral.</summary>
+        private static bool HasNonColorlessArchetype(CardDefinition def)
+        {
+            if (def.Archetypes == null) return false;
+            foreach (var archetype in def.Archetypes)
+                if (archetype != Archetype.Colorless) return true;
+            return false;
         }
 
         /// <summary>

@@ -19,6 +19,8 @@ MonoBehaviour:
   Description: 'On play: conjure a random guy that costs 1 less.'
   Rarity: 2
   Archetypes: 04000000
+  Heroes: []
+  Tribes: []
   Tags: []
   Conjure:
     Count: 1

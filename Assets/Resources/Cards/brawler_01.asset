@@ -19,8 +19,9 @@ MonoBehaviour:
   Description: Overkill.
   Rarity: 1
   Archetypes: 0200000000000000
-  Tags:
-  - bruiser
+  Heroes: []
+  Tribes: []
+  Tags: []
   Conjure:
     Count: 0
     Kind: 0

@@ -19,6 +19,8 @@ MonoBehaviour:
   Description: Precision. Rob 10.
   Rarity: 2
   Archetypes: 00000000
+  Heroes: []
+  Tribes: []
   Tags:
   - classless
   Conjure:

@@ -19,8 +19,9 @@ MonoBehaviour:
   Description: Draw 2.
   Rarity: 1
   Archetypes: 0400000000000000
-  Tags:
-  - mage
+  Heroes: []
+  Tribes: []
+  Tags: []
   Conjure:
     Count: 0
     Kind: 0

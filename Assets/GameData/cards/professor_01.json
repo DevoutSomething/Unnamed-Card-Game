@@ -6,8 +6,13 @@
   "goldCost": 25,
   "description": "Draw 2.",
   "rarity": "Rare",
-  "archetypes": ["Mage", "Colorless"],
-  "tags": ["mage"],
+  "heroes": [],
+  "archetypes": [
+    "Mage",
+    "Colorless"
+  ],
+  "tribes": [],
+  "tags": [],
   "baseAttack": 3,
   "baseHealth": 2,
   "abilities": [

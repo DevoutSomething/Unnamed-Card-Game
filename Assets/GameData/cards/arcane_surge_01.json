@@ -6,7 +6,11 @@
   "goldCost": 30,
   "description": "Conjure 3 random spells into your hand.",
   "rarity": "Rare",
-  "archetypes": ["Mage"],
+  "heroes": [],
+  "archetypes": [
+    "Mage"
+  ],
+  "tribes": [],
   "tags": [],
   "spellTarget": "None",
   "conjure": {

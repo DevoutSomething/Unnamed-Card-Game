@@ -19,8 +19,9 @@ MonoBehaviour:
   Description: Thorns 1.
   Rarity: 0
   Archetypes: 0100000000000000
-  Tags:
-  - tank
+  Heroes: []
+  Tribes: []
+  Tags: []
   Conjure:
     Count: 0
     Kind: 0

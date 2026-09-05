@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Game.Cards;
 using Game.Core.Commands;
 using Game.Core.Events;
+using Game.Core.Heroes;
 using Game.Core.Server;
 using Game.Core.State;
 using UnityEngine;
@@ -13,7 +14,11 @@ namespace Game.Core.Tests
     public class CommandResolverTests
     {
         [TearDown]
-        public void ResetCatalog() => CardCatalogRuntime.Configure(null);
+        public void ResetCatalog()
+        {
+            CardCatalogRuntime.Configure(null);
+            HeroRuntime.Configure(new HeroDatabase());
+        }
 
         // ---------- helpers ----------
 
@@ -419,30 +424,112 @@ namespace Game.Core.Tests
                 Assert.AreEqual(10, p.ShopOffers.Count, $"P{p.Id} shop offers");
         }
 
-        [Test]
-        public void Shop_Offers_ExcludeCommonRarity()
+        // ----- shop hero/archetype filtering -----
+
+        private static GuyCardDefinition ShopGuy(string id, Rarity rarity, Archetype[] arch, string[] heroes)
         {
-            var defs = new List<CardDefinition>();
-            var common = ScriptableObject.CreateInstance<GuyCardDefinition>();
-            common.CardId = "common_guy";
-            common.Rarity = Rarity.Common;
-            defs.Add(common);
-            for (int i = 0; i < 10; i++)
+            var def = ScriptableObject.CreateInstance<GuyCardDefinition>();
+            def.CardId = id;
+            def.Rarity = rarity;
+            def.EnergyCost = 1;
+            def.GoldCost = 10;
+            def.BaseAttack = 1;
+            def.BaseHealth = 1;
+            if (arch != null) def.Archetypes = new List<Archetype>(arch);
+            if (heroes != null) def.Heroes = new List<string>(heroes);
+            return def;
+        }
+
+        private static HeroDatabase HeroDb(string heroId, params Archetype[] archetypes)
+        {
+            var db = new HeroDatabase();
+            db.Register(new HeroDefinition
             {
-                var rare = ScriptableObject.CreateInstance<GuyCardDefinition>();
-                rare.CardId = $"rare_guy_{i}";
-                rare.Rarity = Rarity.Rare;
-                defs.Add(rare);
-            }
+                HeroId = heroId,
+                DisplayName = heroId,
+                Archetypes = new List<Archetype>(archetypes),
+            });
+            return db;
+        }
+
+        private static GameState NewGameWithHero(string heroId, int seed = 42)
+        {
+            var state = new GameState(seed);
+            CommandResolver.Resolve(state, new StartGameCommand(seed, new[] { heroId, heroId }));
+            return state;
+        }
+
+        [Test]
+        public void Shop_IncludesNeutralCommons_RegardlessOfRarity()
+        {
+            // Reversal of the old "hide all Rarity.Common" rule: a neutral card
+            // (no hero, no class) shows in every shop no matter its rarity.
+            var defs = new List<CardDefinition>();
+            for (int i = 0; i < 12; i++)
+                defs.Add(ShopGuy($"neutral_common_{i}", Rarity.Common, arch: null, heroes: null));
             CardCatalogRuntime.Configure(defs);
 
-            var state = NewGame();
+            var state = NewGame();   // players pick no hero
             AdvanceToShop(state);
 
             foreach (var p in state.Players)
-                CollectionAssert.DoesNotContain(
-                    p.ShopOffers.ConvertAll(c => c.DefinitionId), "common_guy",
-                    $"P{p.Id} shop offers must exclude commons");
+            {
+                Assert.AreEqual(10, p.ShopOffers.Count, $"P{p.Id}: neutral commons fill the shop");
+                foreach (var offer in p.ShopOffers)
+                    StringAssert.StartsWith("neutral_common_", offer.DefinitionId);
+            }
+        }
+
+        [Test]
+        public void Shop_FiltersToHeroArchetypeAndNeutrals_ExcludingOffClass()
+        {
+            HeroRuntime.Configure(HeroDb("mage_hero", Archetype.Mage));
+            var defs = new List<CardDefinition>();
+            for (int i = 0; i < 5; i++)
+                defs.Add(ShopGuy($"mage_{i}", Rarity.Rare, new[] { Archetype.Mage }, null));   // class match
+            for (int i = 0; i < 5; i++)
+                defs.Add(ShopGuy($"neutral_{i}", Rarity.Common, null, null));                  // neutral
+            for (int i = 0; i < 5; i++)
+                defs.Add(ShopGuy($"tank_{i}", Rarity.Rare, new[] { Archetype.Tank }, null));   // off-class
+            CardCatalogRuntime.Configure(defs);
+
+            var state = NewGameWithHero("mage_hero");
+            AdvanceToShop(state);
+
+            foreach (var p in state.Players)
+            {
+                Assert.AreEqual(10, p.ShopOffers.Count, $"P{p.Id}: shop filled");
+                foreach (var offer in p.ShopOffers)
+                {
+                    StringAssert.DoesNotStartWith("tank_", offer.DefinitionId,
+                        $"P{p.Id}: off-class card {offer.DefinitionId} must not be offered");
+                    bool eligible = offer.DefinitionId.StartsWith("mage_")
+                                    || offer.DefinitionId.StartsWith("neutral_");
+                    Assert.IsTrue(eligible, $"P{p.Id}: unexpected offer {offer.DefinitionId}");
+                }
+            }
+        }
+
+        [Test]
+        public void Shop_OffersHeroSignedCards_EvenWhenOffClass()
+        {
+            HeroRuntime.Configure(HeroDb("mage_hero", Archetype.Mage));  // hero is a Mage
+            var defs = new List<CardDefinition>();
+            for (int i = 0; i < 12; i++)
+                defs.Add(ShopGuy($"signed_tank_{i}", Rarity.Rare,
+                                 arch: new[] { Archetype.Tank },         // off-class for a Mage
+                                 heroes: new[] { "mage_hero" }));        // ...but signed to the hero
+            CardCatalogRuntime.Configure(defs);
+
+            var state = NewGameWithHero("mage_hero");
+            AdvanceToShop(state);
+
+            foreach (var p in state.Players)
+            {
+                Assert.AreEqual(10, p.ShopOffers.Count);
+                foreach (var offer in p.ShopOffers)
+                    StringAssert.StartsWith("signed_tank_", offer.DefinitionId);
+            }
         }
 
         [Test]

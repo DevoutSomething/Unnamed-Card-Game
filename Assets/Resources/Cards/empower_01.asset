@@ -19,6 +19,8 @@ MonoBehaviour:
   Description: Give one of your guys +2/+2.
   Rarity: 0
   Archetypes: 02000000
+  Heroes: []
+  Tribes: []
   Tags: []
   Conjure:
     Count: 0

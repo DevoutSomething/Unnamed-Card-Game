@@ -49,8 +49,8 @@ namespace Game.Cards {
         [Tooltip("Card must have at least ONE of these archetypes. Empty = any archetype.")]
         public List<Archetype> Archetypes = new();
 
-        [Tooltip("Card must have ALL of these tags — this is the 'tribe' filter " +
-                 "(e.g. 'dragon'). Empty = any card.")]
+        [Tooltip("Card must have ALL of these — the 'tribe' filter (e.g. 'dragon'). " +
+                 "Matched against the card's Tribes and Tags. Empty = any card.")]
         public List<string> RequiredTags = new();
 
         [Tooltip("Turn on to bound the conjured card's printed energy cost.")]
@@ -106,11 +106,11 @@ namespace Game.Cards {
                 if (!matched) return false;
             }
 
-            // Tags are ALL-of: tags are how tribes are expressed, and "dragon
-            // AND undead" is the useful reading.
+            // ALL-of: "dragon AND undead" is the useful reading. A requirement is
+            // met by the card's Tribes (the real tribe field) or its Tags.
             if (RequiredTags != null) {
                 foreach (var tag in RequiredTags) {
-                    if (!string.IsNullOrWhiteSpace(tag) && !def.HasTag(tag)) return false;
+                    if (!string.IsNullOrWhiteSpace(tag) && !def.HasTribe(tag) && !def.HasTag(tag)) return false;
                 }
             }
 

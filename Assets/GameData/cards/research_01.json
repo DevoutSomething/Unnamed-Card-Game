@@ -6,7 +6,11 @@
   "goldCost": 20,
   "description": "Draw 2 cards.",
   "rarity": "Common",
-  "archetypes": ["Colorless"],
+  "heroes": [],
+  "archetypes": [
+    "Colorless"
+  ],
+  "tribes": [],
   "tags": [],
   "spellTarget": "None",
   "drawCount": 2

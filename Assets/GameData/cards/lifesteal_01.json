@@ -1,14 +1,16 @@
 {
-    "cardId": "lifesteal_01",
-    "type": "spell",
-    "displayName": "Lifesteal",
-    "energyCost": 2,
-    "goldCost": 0,
-    "description": "Give a friendly guy Lifesteal 1.",
-    "rarity": "Common",
-    "archetypes": [],
-    "tags": [],
-    "spellTarget": "FriendlyGuy",
-    "grantAbilityId": "lifesteal",
-    "grantAbilityX": 1
+  "cardId": "lifesteal_01",
+  "type": "spell",
+  "displayName": "Lifesteal",
+  "energyCost": 2,
+  "goldCost": 0,
+  "description": "Give a friendly guy Lifesteal 1.",
+  "rarity": "Common",
+  "heroes": [],
+  "archetypes": [],
+  "tribes": [],
+  "tags": [],
+  "spellTarget": "FriendlyGuy",
+  "grantAbilityId": "lifesteal",
+  "grantAbilityX": 1
 }

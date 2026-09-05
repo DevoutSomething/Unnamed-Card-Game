@@ -6,8 +6,13 @@
   "goldCost": 0,
   "description": "Pierce.",
   "rarity": "Common",
-  "archetypes": ["Healer", "Colorless"],
-  "tags": ["healer"],
+  "heroes": [],
+  "archetypes": [
+    "Healer",
+    "Colorless"
+  ],
+  "tribes": [],
+  "tags": [],
   "baseAttack": 2,
   "baseHealth": 1,
   "abilities": [

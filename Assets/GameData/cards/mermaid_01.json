@@ -6,8 +6,17 @@
   "goldCost": 0,
   "description": "Aquatic.",
   "rarity": "Common",
-  "archetypes": ["Mage", "Colorless"],
-  "tags": ["mage", "aquatic"],
+  "heroes": [
+    "oceanlord"
+  ],
+  "archetypes": [
+    "Mage",
+    "Colorless"
+  ],
+  "tribes": [
+    "aquatic"
+  ],
+  "tags": [],
   "baseAttack": 1,
   "baseHealth": 2,
   "abilities": [],

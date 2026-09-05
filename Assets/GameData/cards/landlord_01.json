@@ -6,8 +6,13 @@
   "goldCost": 40,
   "description": "Steals 15 gold at the start of your turn.",
   "rarity": "Epic",
-  "archetypes": ["Assassin", "Colorless"],
-  "tags": ["assassin"],
+  "heroes": [],
+  "archetypes": [
+    "Assassin",
+    "Colorless"
+  ],
+  "tribes": [],
+  "tags": [],
   "baseAttack": 5,
   "baseHealth": 4,
   "abilities": [

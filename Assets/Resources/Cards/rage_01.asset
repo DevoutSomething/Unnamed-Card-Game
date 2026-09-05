@@ -19,6 +19,8 @@ MonoBehaviour:
   Description: Give a friendly guy +1 Attack and Overkill.
   Rarity: 1
   Archetypes: 
+  Heroes: []
+  Tribes: []
   Tags: []
   Conjure:
     Count: 0

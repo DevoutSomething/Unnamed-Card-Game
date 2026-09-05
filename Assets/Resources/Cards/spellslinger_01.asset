@@ -19,8 +19,9 @@ MonoBehaviour:
   Description: Double Tap.
   Rarity: 0
   Archetypes: 0400000000000000
-  Tags:
-  - mage
+  Heroes: []
+  Tribes: []
+  Tags: []
   Conjure:
     Count: 0
     Kind: 0

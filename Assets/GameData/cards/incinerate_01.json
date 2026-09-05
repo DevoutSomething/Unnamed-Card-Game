@@ -6,7 +6,11 @@
   "goldCost": 25,
   "description": "Deal 4 damage to a guy.",
   "rarity": "Rare",
-  "archetypes": ["Mage"],
+  "heroes": [],
+  "archetypes": [
+    "Mage"
+  ],
+  "tribes": [],
   "tags": [],
   "spellTarget": "AnyGuy",
   "damageAmount": 4

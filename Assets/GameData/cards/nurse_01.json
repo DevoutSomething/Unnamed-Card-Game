@@ -6,8 +6,13 @@
   "goldCost": 0,
   "description": "Heal 2.",
   "rarity": "Common",
-  "archetypes": ["Healer", "Colorless"],
-  "tags": ["healer"],
+  "heroes": [],
+  "archetypes": [
+    "Healer",
+    "Colorless"
+  ],
+  "tribes": [],
+  "tags": [],
   "baseAttack": 1,
   "baseHealth": 2,
   "abilities": [

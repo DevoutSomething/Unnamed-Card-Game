@@ -1,20 +1,22 @@
 {
-    "cardId": "battle_healer_01",
-    "type": "guy",
-    "displayName": "Battle Healer",
-    "energyCost": 1,
-    "goldCost": 0,
-    "description": "Lifesteal 1.",
-    "rarity": "Common",
-    "archetypes": [],
-    "tags": [],
-    "baseAttack": 1,
-    "baseHealth": 2,
-    "abilities": [
-        {
-            "id": "lifesteal",
-            "x": 1
-        }
-    ],
-    "killRewardGold": 10
+  "cardId": "battle_healer_01",
+  "type": "guy",
+  "displayName": "Battle Healer",
+  "energyCost": 1,
+  "goldCost": 0,
+  "description": "Lifesteal 1.",
+  "rarity": "Common",
+  "heroes": [],
+  "archetypes": [],
+  "tribes": [],
+  "tags": [],
+  "baseAttack": 1,
+  "baseHealth": 2,
+  "abilities": [
+    {
+      "id": "lifesteal",
+      "x": 1
+    }
+  ],
+  "killRewardGold": 10
 }

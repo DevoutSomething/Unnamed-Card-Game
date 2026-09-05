@@ -6,7 +6,11 @@
   "goldCost": 30,
   "description": "Draw 2 cards and heal a guy for 4.",
   "rarity": "Rare",
-  "archetypes": ["Healer"],
+  "heroes": [],
+  "archetypes": [
+    "Healer"
+  ],
+  "tribes": [],
   "tags": [],
   "spellTarget": "AnyGuy",
   "healAmount": 4,

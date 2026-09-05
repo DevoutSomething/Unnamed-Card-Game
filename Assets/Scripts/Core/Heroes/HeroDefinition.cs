@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Game.Cards;
 
 namespace Game.Core.Heroes
 {
@@ -24,6 +25,12 @@ namespace Game.Core.Heroes
     {
         public string HeroId;
         public string DisplayName;
+
+        /// <summary>This hero's class identity: the archetypes its shop draws from.
+        /// A card is offered when it shares any of these (Colorless aside — that
+        /// means "no class"). Typically two archetypes; empty for a hero whose
+        /// class hasn't been authored yet.</summary>
+        public List<Archetype> Archetypes = new();
 
         /// <summary>The fixed cards this hero always opens with, as
         /// (card id, quantity) pairs — e.g. ("brawler_01", 2) means two copies.

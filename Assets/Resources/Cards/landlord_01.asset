@@ -19,8 +19,9 @@ MonoBehaviour:
   Description: Steals 15 gold at the start of your turn.
   Rarity: 2
   Archetypes: 0300000000000000
-  Tags:
-  - assassin
+  Heroes: []
+  Tribes: []
+  Tags: []
   Conjure:
     Count: 0
     Kind: 0

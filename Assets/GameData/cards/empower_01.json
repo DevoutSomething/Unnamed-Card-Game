@@ -6,7 +6,11 @@
   "goldCost": 25,
   "description": "Give one of your guys +2/+2.",
   "rarity": "Common",
-  "archetypes": ["Bruiser"],
+  "heroes": [],
+  "archetypes": [
+    "Bruiser"
+  ],
+  "tribes": [],
   "tags": [],
   "spellTarget": "FriendlyGuy",
   "buffAttack": 2,

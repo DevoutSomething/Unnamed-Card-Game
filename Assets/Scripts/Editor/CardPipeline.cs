@@ -86,6 +86,8 @@ namespace Game.Cards.EditorTools {
             public string description;
             public string rarity;
             public List<string> archetypes = new();
+            public List<string> heroes = new();
+            public List<string> tribes = new();
             public List<string> tags = new();
             public int baseAttack;
             public int baseHealth = 1;
@@ -217,6 +219,8 @@ namespace Game.Cards.EditorTools {
             def.Archetypes = dto.archetypes
                 .Select(a => ParseEnum(a, Archetype.Colorless, dto.cardId, "archetype"))
                 .ToList();
+            def.Heroes = new List<string>(dto.heroes);
+            def.Tribes = new List<string>(dto.tribes);
             def.Tags = new List<string>(dto.tags);
 
             var conjure = dto.conjure ?? new ConjureJson();
@@ -355,6 +359,8 @@ namespace Game.Cards.EditorTools {
                     description = def.Description,
                     rarity = def.Rarity.ToString(),
                     archetypes = def.Archetypes.Select(a => a.ToString()).ToList(),
+                    heroes = new List<string>(def.Heroes),
+                    tribes = new List<string>(def.Tribes),
                     tags = new List<string>(def.Tags),
                 };
                 if (def.Conjure != null) {

@@ -19,6 +19,8 @@ MonoBehaviour:
   Description: Deal 2 damage to any guy or hero.
   Rarity: 0
   Archetypes: 
+  Heroes: []
+  Tribes: []
   Tags: []
   Conjure:
     Count: 0

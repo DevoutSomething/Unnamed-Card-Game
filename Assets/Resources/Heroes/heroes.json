@@ -3,31 +3,37 @@
         {
             "heroId": "thief",
             "displayName": "Thief",
+            "archetypes": ["Assassin", "Bruiser"],
             "baseDeck": []
         },
         {
             "heroId": "oceanlord",
             "displayName": "Oceanlord",
+            "archetypes": ["Tank", "Mage"],
             "baseDeck": []
         },
         {
             "heroId": "headmaster",
             "displayName": "Headmaster",
+            "archetypes": ["Assassin", "Mage"],
             "baseDeck": []
         },
         {
             "heroId": "king",
             "displayName": "King",
+            "archetypes": ["Tank", "Bruiser"],
             "baseDeck": []
         },
         {
             "heroId": "priest",
             "displayName": "Priest",
+            "archetypes": ["Mage", "Healer"],
             "baseDeck": []
         },
         {
             "heroId": "berserker",
             "displayName": "Berserker",
+            "archetypes": ["Bruiser", "Healer"],
             "baseDeck": [
                 { "cardId": "basic_barbarian_01", "quantity": 2 },
                 { "cardId": "battle_healer_01", "quantity": 2 },

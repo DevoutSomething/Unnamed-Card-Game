@@ -19,6 +19,8 @@ MonoBehaviour:
   Description: Draw 2 cards.
   Rarity: 0
   Archetypes: 00000000
+  Heroes: []
+  Tribes: []
   Tags: []
   Conjure:
     Count: 0

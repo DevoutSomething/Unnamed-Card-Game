@@ -19,9 +19,11 @@ MonoBehaviour:
   Description: Aquatic.
   Rarity: 1
   Archetypes: 0100000000000000
-  Tags:
-  - tank
+  Heroes:
+  - oceanlord
+  Tribes:
   - aquatic
+  Tags: []
   Conjure:
     Count: 0
     Kind: 0

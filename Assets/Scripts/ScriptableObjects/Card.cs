@@ -26,11 +26,25 @@ namespace Game.Cards {
         [Header("Info")]
         [TextArea] public string Description;
         public Rarity Rarity;
+
+        [Header("Identity — who this card belongs to")]
+        [Tooltip("Class identity. A hero's shop offers cards that share one of the hero's " +
+                 "archetypes. Colorless counts as 'no class' — a purely-Colorless card is " +
+                 "neutral and shows in every hero's shop.")]
         public List<Archetype> Archetypes = new();
 
+        [Tooltip("Hero ids this card is signed to (e.g. 'oceanlord'). A hero's shop always " +
+                 "offers its signed cards, on top of its archetype matches. Empty = not tied " +
+                 "to any specific hero.")]
+        public List<string> Heroes = new();
+
+        [Tooltip("Creature/faction tribe(s), e.g. 'aquatic', 'dragon'. The tribe filter for " +
+                 "conjures and future rules reads these.")]
+        public List<string> Tribes = new();
+
         [Header("Meta")]
-        [Tooltip("Free-form meta tags (e.g. 'dragon', 'starter'). Cosmetic parts and future rules " +
-                 "can require these to decide what is valid for this card.")]
+        [Tooltip("Free-form meta tags that aren't a class, hero, or tribe (e.g. 'classless', " +
+                 "'starter'). Cosmetic parts and future rules can require these.")]
         public List<string> Tags = new();
 
         [Header("Conjure")]
@@ -42,6 +56,8 @@ namespace Game.Cards {
         public bool Conjures => Conjure != null && Conjure.Conjures;
 
         public bool HasTag(string tag) => Tags != null && Tags.Contains(tag);
+        public bool HasTribe(string tribe) => Tribes != null && Tribes.Contains(tribe);
+        public bool HasHero(string heroId) => Heroes != null && Heroes.Contains(heroId);
     }
 
     public enum Rarity {

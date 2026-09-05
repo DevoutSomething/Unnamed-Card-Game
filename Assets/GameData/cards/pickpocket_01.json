@@ -6,8 +6,13 @@
   "goldCost": 0,
   "description": "Rob 3.",
   "rarity": "Common",
-  "archetypes": ["Assassin", "Colorless"],
-  "tags": ["assassin"],
+  "heroes": [],
+  "archetypes": [
+    "Assassin",
+    "Colorless"
+  ],
+  "tribes": [],
+  "tags": [],
   "baseAttack": 3,
   "baseHealth": 1,
   "abilities": [

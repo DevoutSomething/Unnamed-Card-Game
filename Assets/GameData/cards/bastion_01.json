@@ -1,25 +1,25 @@
 {
-    "cardId": "bastion_01",
-    "type": "guy",
-    "displayName": "Bastion",
-    "energyCost": 3,
-    "goldCost": 0,
-    "description": "Thorns 1.",
-    "rarity": "Common",
-    "archetypes": [
-        "Tank",
-        "Colorless"
-    ],
-    "tags": [
-        "tank"
-    ],
-    "baseAttack": 0,
-    "baseHealth": 5,
-    "abilities": [
-        {
-            "id": "thorns",
-            "x": 1
-        }
-    ],
-    "killRewardGold": 25
+  "cardId": "bastion_01",
+  "type": "guy",
+  "displayName": "Bastion",
+  "energyCost": 3,
+  "goldCost": 0,
+  "description": "Thorns 1.",
+  "rarity": "Common",
+  "heroes": [],
+  "archetypes": [
+    "Tank",
+    "Colorless"
+  ],
+  "tribes": [],
+  "tags": [],
+  "baseAttack": 0,
+  "baseHealth": 5,
+  "abilities": [
+    {
+      "id": "thorns",
+      "x": 1
+    }
+  ],
+  "killRewardGold": 25
 }

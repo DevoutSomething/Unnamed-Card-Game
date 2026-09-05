@@ -6,8 +6,13 @@
   "goldCost": 25,
   "description": "Gain 10 gold at the start of your turn.",
   "rarity": "Rare",
-  "archetypes": ["Assassin", "Colorless"],
-  "tags": ["assassin"],
+  "heroes": [],
+  "archetypes": [
+    "Assassin",
+    "Colorless"
+  ],
+  "tribes": [],
+  "tags": [],
   "baseAttack": 2,
   "baseHealth": 2,
   "abilities": [

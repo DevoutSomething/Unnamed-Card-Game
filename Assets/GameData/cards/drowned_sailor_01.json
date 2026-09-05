@@ -6,8 +6,17 @@
   "goldCost": 25,
   "description": "Aquatic.",
   "rarity": "Rare",
-  "archetypes": ["Tank", "Colorless"],
-  "tags": ["tank", "aquatic"],
+  "heroes": [
+    "oceanlord"
+  ],
+  "archetypes": [
+    "Tank",
+    "Colorless"
+  ],
+  "tribes": [
+    "aquatic"
+  ],
+  "tags": [],
   "baseAttack": 1,
   "baseHealth": 4,
   "abilities": [],

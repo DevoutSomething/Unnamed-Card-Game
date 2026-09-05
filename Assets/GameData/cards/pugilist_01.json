@@ -6,8 +6,13 @@
   "goldCost": 0,
   "description": "",
   "rarity": "Common",
-  "archetypes": ["Bruiser", "Colorless"],
-  "tags": ["bruiser"],
+  "heroes": [],
+  "archetypes": [
+    "Bruiser",
+    "Colorless"
+  ],
+  "tribes": [],
+  "tags": [],
   "baseAttack": 2,
   "baseHealth": 2,
   "abilities": [],

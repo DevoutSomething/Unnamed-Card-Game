@@ -6,8 +6,17 @@
   "goldCost": 0,
   "description": "Precision. Aquatic.",
   "rarity": "Common",
-  "archetypes": ["Assassin", "Colorless"],
-  "tags": ["assassin", "aquatic"],
+  "heroes": [
+    "oceanlord"
+  ],
+  "archetypes": [
+    "Assassin",
+    "Colorless"
+  ],
+  "tribes": [
+    "aquatic"
+  ],
+  "tags": [],
   "baseAttack": 1,
   "baseHealth": 3,
   "abilities": [

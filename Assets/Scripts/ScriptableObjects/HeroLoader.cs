@@ -20,6 +20,7 @@ namespace Game.Cards {
         class HeroJson {
             public string heroId;
             public string displayName;
+            public List<string> archetypes = new();
             public List<BaseDeckEntryJson> baseDeck = new();
         }
 
@@ -64,9 +65,16 @@ namespace Game.Cards {
                         if (entry != null && !string.IsNullOrWhiteSpace(entry.cardId) && entry.quantity > 0)
                             baseDeck.Add((entry.cardId, entry.quantity));
 
+                var archetypes = new List<Archetype>();
+                if (dto.archetypes != null)
+                    foreach (var a in dto.archetypes)
+                        if (Enum.TryParse<Archetype>(a, out var arch)) archetypes.Add(arch);
+                        else Debug.LogError($"HeroLoader: hero '{dto.heroId}' has bad archetype '{a}', ignored.");
+
                 db.Register(new HeroDefinition {
                     HeroId = dto.heroId,
                     DisplayName = dto.displayName,
+                    Archetypes = archetypes,
                     BaseDeck = baseDeck,
                 });
             }

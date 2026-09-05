@@ -19,8 +19,9 @@ MonoBehaviour:
   Description: Heal 2.
   Rarity: 0
   Archetypes: 0500000000000000
-  Tags:
-  - healer
+  Heroes: []
+  Tribes: []
+  Tags: []
   Conjure:
     Count: 0
     Kind: 0

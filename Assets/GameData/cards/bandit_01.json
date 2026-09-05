@@ -6,8 +6,13 @@
   "goldCost": 0,
   "description": "Hero Damage 1. He steals.",
   "rarity": "Common",
-  "archetypes": ["Assassin", "Colorless"],
-  "tags": ["assassin"],
+  "heroes": [],
+  "archetypes": [
+    "Assassin",
+    "Colorless"
+  ],
+  "tribes": [],
+  "tags": [],
   "baseAttack": 2,
   "baseHealth": 1,
   "abilities": [

@@ -6,7 +6,11 @@
   "goldCost": 40,
   "description": "On play: conjure a random guy that costs 1 less.",
   "rarity": "Epic",
-  "archetypes": ["Mage"],
+  "heroes": [],
+  "archetypes": [
+    "Mage"
+  ],
+  "tribes": [],
   "tags": [],
   "baseAttack": 1,
   "baseHealth": 1,

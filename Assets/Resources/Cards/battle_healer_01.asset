@@ -19,6 +19,8 @@ MonoBehaviour:
   Description: Lifesteal 1.
   Rarity: 0
   Archetypes: 
+  Heroes: []
+  Tribes: []
   Tags: []
   Conjure:
     Count: 0

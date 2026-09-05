@@ -6,8 +6,13 @@
   "goldCost": 0,
   "description": "Double Tap.",
   "rarity": "Common",
-  "archetypes": ["Mage", "Colorless"],
-  "tags": ["mage"],
+  "heroes": [],
+  "archetypes": [
+    "Mage",
+    "Colorless"
+  ],
+  "tribes": [],
+  "tags": [],
   "baseAttack": 2,
   "baseHealth": 2,
   "abilities": [

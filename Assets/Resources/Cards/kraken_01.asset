@@ -19,9 +19,11 @@ MonoBehaviour:
   Description: Aquatic.
   Rarity: 2
   Archetypes: 0200000000000000
-  Tags:
-  - bruiser
+  Heroes:
+  - oceanlord
+  Tribes:
   - aquatic
+  Tags: []
   Conjure:
     Count: 0
     Kind: 0

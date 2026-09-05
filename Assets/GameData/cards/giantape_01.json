@@ -6,7 +6,11 @@
   "goldCost": 25,
   "description": "Powerful and aggressive.",
   "rarity": "Rare",
-  "archetypes": ["Bruiser"],
+  "heroes": [],
+  "archetypes": [
+    "Bruiser"
+  ],
+  "tribes": [],
   "tags": [],
   "baseAttack": 7,
   "baseHealth": 7,

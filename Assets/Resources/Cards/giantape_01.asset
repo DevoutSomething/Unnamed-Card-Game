@@ -19,6 +19,8 @@ MonoBehaviour:
   Description: Powerful and aggressive.
   Rarity: 1
   Archetypes: 02000000
+  Heroes: []
+  Tribes: []
   Tags: []
   Conjure:
     Count: 0

@@ -6,8 +6,13 @@
   "goldCost": 0,
   "description": "",
   "rarity": "Common",
-  "archetypes": ["Tank", "Colorless"],
-  "tags": ["tank"],
+  "heroes": [],
+  "archetypes": [
+    "Tank",
+    "Colorless"
+  ],
+  "tribes": [],
+  "tags": [],
   "baseAttack": 3,
   "baseHealth": 3,
   "abilities": [],
