@@ -189,8 +189,7 @@
       "target": "EnemiesInLane",
       "costPerX": 0.5,
       "flatCost": 0.5
-    }
-    ,
+    },
     {
       "abilityId": "bloodprice",
       "displayName": "Blood Price",
@@ -198,6 +197,16 @@
       "trigger": "OnPlay",
       "effect": "LoseHealth",
       "target": "Owner",
+      "costPerX": 1.0,
+      "flatCost": 0.25
+    },
+    {
+      "abilityId": "lifesteal",
+      "displayName": "Lifesteal",
+      "description": "Heals this guy for {X}× the combat damage it deals.",
+      "trigger": "OnAttack",
+      "effect": "LifeSteal",
+      "target": "Self",
       "costPerX": 1.0,
       "flatCost": 0.25
     }

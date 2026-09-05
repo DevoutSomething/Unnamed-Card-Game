@@ -112,9 +112,10 @@ namespace Game.Client
 
         private void Start()
         {
-            // Bootstrap: abilities + card pool (both discovered from imported
-            // assets), skins for rendering, then the pre-match menu.
+            // Bootstrap: abilities + heroes + card pool (all discovered from
+            // imported assets), skins for rendering, then the pre-match menu.
             AbilityLoader.Bootstrap();
+            HeroLoader.Bootstrap();
             _db = new CardDatabase();
             _skins = new CardSkinLibrary();
             CardCatalogRuntime.Configure(_db.All);

@@ -1,0 +1,34 @@
+{
+    "heroes": [
+        {
+            "heroId": "thief",
+            "displayName": "Thief",
+            "baseDeck": []
+        },
+        {
+            "heroId": "oceanlord",
+            "displayName": "Oceanlord",
+            "baseDeck": []
+        },
+        {
+            "heroId": "headmaster",
+            "displayName": "Headmaster",
+            "baseDeck": []
+        },
+        {
+            "heroId": "king",
+            "displayName": "King",
+            "baseDeck": []
+        },
+        {
+            "heroId": "priest",
+            "displayName": "Priest",
+            "baseDeck": []
+        },
+        {
+            "heroId": "berserker",
+            "displayName": "Berserker",
+            "baseDeck": []
+        }
+    ]
+}

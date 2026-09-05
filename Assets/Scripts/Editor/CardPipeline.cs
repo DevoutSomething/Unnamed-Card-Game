@@ -22,10 +22,12 @@ namespace Game.Cards.EditorTools {
         public const string BorderArtDir = "Assets/GameData/art/borders";
         public const string BordersJsonPath = "Assets/GameData/borders.json";
         public const string AbilitiesJsonPath = "Assets/GameData/abilities.json";
+        public const string HeroesJsonPath = "Assets/GameData/heroes.json";
         public const string CardAssetDir = "Assets/Resources/Cards";
         public const string ArtAssetDir = "Assets/Resources/Skins/Arts";
         public const string BorderAssetDir = "Assets/Resources/Skins/Borders";
         public const string AbilityAssetDir = "Assets/Resources/Abilities";
+        public const string HeroAssetDir = "Assets/Resources/Heroes";
 
         // ------------------------------------------------------------ paths
         // AssetDatabase APIs need project-relative paths ("Assets/...") but all
@@ -120,12 +122,13 @@ namespace Game.Cards.EditorTools {
         [MenuItem("Cards/Pipeline/Import All (JSON to Assets)")]
         public static void ImportAll() {
             int abilities = ImportAbilities();
+            int heroes = ImportHeroes();
             int cards = ImportCardJson();
             int arts = ImportCardArt();
             int borders = ImportBorders();
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log($"[CardPipeline] Import done: {cards} card(s), {abilities} abilities, {arts} art(s), {borders} border(s).");
+            Debug.Log($"[CardPipeline] Import done: {cards} card(s), {abilities} abilities, {heroes} hero(es), {arts} art(s), {borders} border(s).");
         }
 
         /// <summary>Publishes abilities.json into Resources so AbilityLoader finds it at runtime.</summary>
@@ -138,6 +141,18 @@ namespace Game.Cards.EditorTools {
             File.Copy(Abs(AbilitiesJsonPath), Abs($"{AbilityAssetDir}/abilities.json"), overwrite: true);
             AssetDatabase.ImportAsset($"{AbilityAssetDir}/abilities.json");
             return AbilityLoader.Parse(File.ReadAllText(Abs(AbilitiesJsonPath))).Count;
+        }
+
+        /// <summary>Publishes heroes.json into Resources so HeroLoader finds it at runtime.</summary>
+        static int ImportHeroes() {
+            if (!File.Exists(Abs(HeroesJsonPath))) {
+                Debug.LogWarning($"[CardPipeline] {HeroesJsonPath} not found — no heroes will resolve.");
+                return 0;
+            }
+            Directory.CreateDirectory(Abs(HeroAssetDir));
+            File.Copy(Abs(HeroesJsonPath), Abs($"{HeroAssetDir}/heroes.json"), overwrite: true);
+            AssetDatabase.ImportAsset($"{HeroAssetDir}/heroes.json");
+            return HeroLoader.Parse(File.ReadAllText(Abs(HeroesJsonPath))).Count;
         }
 
         static int ImportCardJson() {
