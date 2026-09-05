@@ -39,3 +39,5 @@ MonoBehaviour:
   BuffAttack: 0
   BuffHealth: 0
   DrawCount: 0
+  GrantAbilityId: 
+  GrantAbilityX: 1

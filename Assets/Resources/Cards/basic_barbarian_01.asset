@@ -10,17 +10,16 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6ab3ec2384fc3cc48bf12111d8356500, type: 3}
-  m_Name: brawler_01
+  m_Name: basic_barbarian_01
   m_EditorClassIdentifier: Assembly-CSharp::Game.Cards.GuyCardDefinition
-  CardId: brawler_01
-  DisplayName: Brawler
-  EnergyCost: 2
+  CardId: basic_barbarian_01
+  DisplayName: Basic Barbarian
+  EnergyCost: 0
   GoldCost: 0
-  Description: Overkill.
-  Rarity: 1
-  Archetypes: 0200000000000000
-  Tags:
-  - bruiser
+  Description: Blood Price 1.
+  Rarity: 0
+  Archetypes: 
+  Tags: []
   Conjure:
     Count: 0
     Kind: 0
@@ -34,9 +33,9 @@ MonoBehaviour:
     CostReduction: 0
     AttackBonus: 0
     HealthBonus: 0
-  BaseAttack: 3
-  BaseHealth: 2
+  BaseAttack: 2
+  BaseHealth: 1
   Abilities:
-  - Id: overkill
+  - Id: bloodprice
     X: 1
-  KillRewardGold: 25
+  KillRewardGold: 5

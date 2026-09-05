@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Game.Cards;
+using Game.Core.Abilities;
 using Game.Core.Commands;
 using Game.Core.Events;
 using Game.Core.Server;
@@ -23,7 +24,8 @@ namespace Game.Core.Tests
 
         private static SpellCardDefinition Spell(
             string id, int cost, SpellTarget target,
-            int damage = 0, int heal = 0, int buffAttack = 0, int buffHealth = 0, int draw = 0)
+            int damage = 0, int heal = 0, int buffAttack = 0, int buffHealth = 0, int draw = 0,
+            string grantAbilityId = null, int grantAbilityX = 1)
         {
             var def = ScriptableObject.CreateInstance<SpellCardDefinition>();
             def.CardId = id;
@@ -35,6 +37,8 @@ namespace Game.Core.Tests
             def.BuffAttack = buffAttack;
             def.BuffHealth = buffHealth;
             def.DrawCount = draw;
+            def.GrantAbilityId = grantAbilityId;
+            def.GrantAbilityX = grantAbilityX;
             return def;
         }
 
@@ -169,6 +173,51 @@ namespace Game.Core.Tests
             AssertNoRejections(events);
             Assert.AreEqual(3, victim.CurrentHealth);
             Assert.IsFalse(state.Players[0].cardsInHand.Contains(spell), "spell is consumed");
+        }
+
+        // ---------- grant ability ----------
+
+        [Test]
+        public void Grant_GivesTargetGuyTheAbility()
+        {
+            var def = Spell("bloodlust", 1, SpellTarget.FriendlyGuy,
+                            grantAbilityId: "lifesteal", grantAbilityX: 1);
+            var state = NewGameOnSpellTurn(def, out var spell);
+            var ally = Deploy(state, playerId: 0, lane: 0, slot: 0, health: 5);
+
+            Assert.IsFalse(ally.Abilities.Any(a => a.Id == "lifesteal"),
+                           "guy starts without the granted keyword");
+
+            var events = Submit(state, new PlayCardCommand(
+                0, spell.InstanceId, LaneIndex: -1, SlotIndex: -1,
+                TargetCardInstanceId: ally.InstanceId));
+
+            AssertNoRejections(events);
+            Assert.IsTrue(events.OfType<CardGainedAbilityEvent>().Any(e =>
+                e.CardInstanceId == ally.InstanceId && e.AbilityId == "lifesteal" && e.X == 1),
+                "a grant event is emitted");
+            Assert.IsTrue(ally.Abilities.Any(a => a.Id == "lifesteal" && a.X == 1),
+                          "the guy now carries the granted keyword at the granted magnitude");
+            Assert.IsFalse(state.Players[0].cardsInHand.Contains(spell), "spell is consumed");
+        }
+
+        [Test]
+        public void Grant_MergesInsteadOfDuplicating()
+        {
+            // A guy that already has the keyword: granting the same or weaker X is
+            // a no-op; a stronger X upgrades in place — never a second copy.
+            var def = Spell("bloodlust", 1, SpellTarget.FriendlyGuy,
+                            grantAbilityId: "lifesteal", grantAbilityX: 1);
+            var state = NewGameOnSpellTurn(def, out var spell);
+            var ally = Deploy(state, playerId: 0, lane: 0, slot: 0, health: 5);
+            ally.Abilities.Add(new AbilityRef { Id = "lifesteal", X = 2 });
+
+            Submit(state, new PlayCardCommand(
+                0, spell.InstanceId, LaneIndex: -1, SlotIndex: -1,
+                TargetCardInstanceId: ally.InstanceId));
+
+            Assert.AreEqual(1, ally.Abilities.Count(a => a.Id == "lifesteal"), "no duplicate entry");
+            Assert.AreEqual(2, ally.Abilities.First(a => a.Id == "lifesteal").X, "kept the stronger X");
         }
 
         [Test]

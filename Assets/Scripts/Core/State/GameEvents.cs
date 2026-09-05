@@ -28,6 +28,7 @@ namespace Game.Core.Events
     public record CardDamagedEvent(int CardInstanceId, int Amount, int DamageTaken) : GameEvent;
     public record CardHealedEvent(int CardInstanceId, int Amount, int DamageHealed) : GameEvent;
     public record CardBuffedEvent(int CardInstanceId, int AttackChange, int HealthChange) : GameEvent;
+    public record CardGainedAbilityEvent(int CardInstanceId, string AbilityId, int X) : GameEvent;
     public record GoldGainedEvent(int PlayerId, int GoldGained) : GameEvent;
     public record GoldLostEvent(int PlayerId, int GoldLost) : GameEvent;
 

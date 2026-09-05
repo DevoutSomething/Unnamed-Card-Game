@@ -290,7 +290,9 @@ namespace Game.Core.Tests
 
             Submit(state, new PlayCardCommand(0, card.InstanceId, LaneIndex: 0));
 
-            Assert.LessOrEqual(p0.cardsInHand.Count, 7, "conjuring can't overflow the hand cap");
+            // Mirrors CommandResolver.MaxHandSize (private const): conjuring caps
+            // the hand rather than overflowing it.
+            Assert.LessOrEqual(p0.cardsInHand.Count, 10, "conjuring can't overflow the hand cap");
         }
 
         [Test]

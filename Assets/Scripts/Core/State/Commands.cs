@@ -3,7 +3,7 @@ namespace Game.Core.Commands
     
 public abstract record Command(int PlayerId);
 
-public record StartGameCommand(int Seed) : Command(-1);
+public record StartGameCommand(int Seed, string[] HeroIds = null) : Command(-1);
 
 /// <summary>
 /// Plays a card from hand. Guys use LaneIndex/SlotIndex to pick where they

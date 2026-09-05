@@ -20,7 +20,14 @@ namespace Game.Cards {
         class HeroJson {
             public string heroId;
             public string displayName;
-            public List<string> baseDeck = new();
+            public List<BaseDeckEntryJson> baseDeck = new();
+        }
+
+        /// <summary>One base-deck line: a card id and how many copies of it.</summary>
+        [Serializable]
+        class BaseDeckEntryJson {
+            public string cardId;
+            public int quantity = 1;
         }
 
         [Serializable]
@@ -50,10 +57,17 @@ namespace Game.Cards {
             }
             foreach (var dto in file.heroes) {
                 if (string.IsNullOrWhiteSpace(dto.heroId)) continue;
+
+                var baseDeck = new List<(string CardId, int Quantity)>();
+                if (dto.baseDeck != null)
+                    foreach (var entry in dto.baseDeck)
+                        if (entry != null && !string.IsNullOrWhiteSpace(entry.cardId) && entry.quantity > 0)
+                            baseDeck.Add((entry.cardId, entry.quantity));
+
                 db.Register(new HeroDefinition {
                     HeroId = dto.heroId,
                     DisplayName = dto.displayName,
-                    BaseDeck = new List<string>(dto.baseDeck ?? new List<string>()),
+                    BaseDeck = baseDeck,
                 });
             }
             return db;

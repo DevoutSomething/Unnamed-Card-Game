@@ -69,6 +69,11 @@ namespace Game.Client
         private CardDatabase _db;
         private CardSkinLibrary _skins;
 
+        // Pre-match hero picks, indexed by player id (0/1). Null = not yet chosen;
+        // the lobby's hero picker defaults these to the first hero when opened.
+        // Used later to build each player's deck from their hero's base deck + pool.
+        private readonly string[] _selectedHeroIds = new string[2];
+
         /// <summary>
         /// Online, always the fixed assigned id. Hot-seat, normally whoever's
         /// turn it is — except State.ActivePlayerId is -1 (a system slot's
@@ -108,6 +113,17 @@ namespace Game.Client
         {
             _hotSeatShopperId = playerId;
             Redraw();
+        }
+
+        /// <summary>The hero id a player picked in the lobby, or null if unpicked.</summary>
+        public string GetSelectedHero(int playerId) =>
+            playerId >= 0 && playerId < _selectedHeroIds.Length ? _selectedHeroIds[playerId] : null;
+
+        /// <summary>Records a player's hero pick from the lobby's hero picker.</summary>
+        public void SetSelectedHero(int playerId, string heroId)
+        {
+            if (playerId >= 0 && playerId < _selectedHeroIds.Length)
+                _selectedHeroIds[playerId] = heroId;
         }
 
         private void Start()
@@ -257,7 +273,8 @@ namespace Game.Client
         {
             int matchSeed = seed != 0 ? seed : new System.Random().Next(1, int.MaxValue);
             Debug.Log($"starting match with seed {matchSeed}");
-            ((LocalGameServer)_server).StartNewGame(matchSeed);   // -> StartGame batch -> HandleEvents -> Redraw
+            // Local hot-seat: both players' hero picks come from the lobby picker.
+            ((LocalGameServer)_server).StartNewGame(matchSeed, _selectedHeroIds);   // -> StartGame batch -> HandleEvents -> Redraw
         }
 
         // ---------------------------------------------------------------
@@ -321,6 +338,11 @@ namespace Game.Client
 
         /// <summary>A spell drag started: outline every legal target for it.</summary>
         public void BeginSpellTargeting(CardInstance card) => _board.ShowValidSpellTargets(card);
+
+        /// <summary>Each frame of a spell drag: recolor the target under the pointer
+        /// green (legal) or red (illegal). Ids are -1 when not over that kind of target.</summary>
+        public void UpdateSpellHover(int hoveredCardId, int hoveredHeroPlayerId) =>
+            _board.UpdateSpellHover(hoveredCardId, hoveredHeroPlayerId);
 
         /// <summary>The drag settled (played, cancelled, or dropped nowhere).</summary>
         public void EndSpellTargeting() => _board.ClearSpellTargets();
@@ -494,6 +516,13 @@ namespace Game.Client
             }
 
             Redraw();
+
+            // A hero that actually took damage this batch jolts its health readout.
+            // (Blood Price and other life PAYMENTS emit PlayerLostHealthEvent, not
+            // PlayerDamagedEvent, so they deliberately don't shake.)
+            foreach (var dmg in events.OfType<PlayerDamagedEvent>())
+                if (dmg.Amount > 0)
+                    _board.ShakeHero(dmg.PlayerId);
         }
 
         private void Redraw()

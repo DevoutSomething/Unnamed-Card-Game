@@ -101,6 +101,8 @@ namespace Game.Cards.EditorTools {
             public int buffAttack;
             public int buffHealth;
             public int drawCount;
+            public string grantAbilityId = "";
+            public int grantAbilityX = 1;
         }
 
         [Serializable]
@@ -251,6 +253,8 @@ namespace Game.Cards.EditorTools {
                 spell.BuffAttack = dto.buffAttack;
                 spell.BuffHealth = dto.buffHealth;
                 spell.DrawCount = dto.drawCount;
+                spell.GrantAbilityId = dto.grantAbilityId;
+                spell.GrantAbilityX = dto.grantAbilityX;
             }
         }
 
@@ -384,6 +388,8 @@ namespace Game.Cards.EditorTools {
                     dto.buffAttack = spell.BuffAttack;
                     dto.buffHealth = spell.BuffHealth;
                     dto.drawCount = spell.DrawCount;
+                    dto.grantAbilityId = spell.GrantAbilityId;
+                    dto.grantAbilityX = spell.GrantAbilityX;
                 }
                 File.WriteAllText(Abs($"{CardJsonDir}/{def.CardId}.json"),
                                   JsonUtility.ToJson(dto, prettyPrint: true) + "\n");

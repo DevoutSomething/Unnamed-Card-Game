@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Game.Core.Heroes;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -18,6 +19,8 @@ namespace Game.Client.View
         static readonly Color PanelColor = new Color(0f, 0f, 0f, 0.45f);
         static readonly Color FieldColor = new Color(1f, 1f, 1f, 0.10f);
         static readonly Color ErrorColor = new Color(1f, 0.55f, 0.5f);
+        static readonly Color HeroBoxColor = new Color(0.22f, 0.28f, 0.4f);
+        static readonly Color HeroBoxSelectedColor = new Color(0.3f, 0.55f, 0.35f);
 
         GameController _controller;
 
@@ -35,6 +38,11 @@ namespace Game.Client.View
         Button _startMatchButton;
 
         Text _joinStatusLabel;
+
+        GameObject _heroSelectPanel;
+        Text _heroToggleLabel;
+        int _heroSelectForPlayer;   // which player the picker is currently assigning (0/1)
+        readonly List<(string heroId, Image box)> _heroBoxes = new();
 
         string PlayerName => string.IsNullOrWhiteSpace(_nameInput.text) ? "Player" : _nameInput.text.Trim();
 
@@ -64,6 +72,7 @@ namespace Game.Client.View
             BuildMainMenuPanel(canvasGo.transform);
             BuildHostPanel(canvasGo.transform);
             BuildJoinPanel(canvasGo.transform);
+            BuildHeroSelectPanel(canvasGo.transform);
 
             ShowMainMenu();
         }
@@ -96,6 +105,10 @@ namespace Game.Client.View
             AddSpacer(content, 6f);
             AddButton(content, "LocalButton", "Local Match (Hot-seat)", new Color(0.3f, 0.5f, 0.3f), 56,
                 () => _controller.OnLocalMatchClicked());
+
+            AddSpacer(content, 6f);
+            AddButton(content, "SelectHeroButton", "Select Hero", new Color(0.45f, 0.35f, 0.6f), 56,
+                () => ShowHeroSelect());
 
             AddSpacer(content, 6f);
             AddButton(content, "HostButton", "Host Online Game", new Color(0.25f, 0.45f, 0.75f), 56,
@@ -153,6 +166,97 @@ namespace Game.Client.View
         }
 
         // ------------------------------------------------------------------
+        // Hero picker
+        // ------------------------------------------------------------------
+
+        // One box per hero, built once from the loaded roster. For now each box
+        // is just the hero's name; the box is a natural home for a portrait image
+        // later (drop an Image on the same button and the selection tint still
+        // works). Which player a pick applies to is a top-of-panel toggle, so a
+        // local hot-seat game can choose Player 2's hero from the same screen.
+        void BuildHeroSelectPanel(Transform canvas)
+        {
+            _heroSelectPanel = NewPanel(canvas, "HeroSelect", 620f, out var content);
+
+            var title = AddLabel(content, "Title", 28, TextAnchor.MiddleCenter, 40);
+            title.text = "Select Hero";
+            title.fontStyle = FontStyle.Bold;
+
+            var toggle = AddButton(content, "PlayerToggle", "", new Color(0.25f, 0.45f, 0.75f), 48,
+                () => ToggleHeroPlayer());
+            // The panel is inactive while we build it, so include-inactive is
+            // required to find the button's label component.
+            _heroToggleLabel = toggle.GetComponentInChildren<Text>(true);
+
+            AddLabel(content, "ToggleHint", 13, TextAnchor.MiddleCenter, 28).text =
+                "Tap to switch who you're choosing for (Player 2 applies to local hot-seat).";
+
+            AddSpacer(content, 8f);
+
+            var roster = HeroRuntime.Database.All;
+            if (roster.Count == 0)
+            {
+                AddLabel(content, "NoHeroes", 16, TextAnchor.MiddleCenter, 44).text =
+                    "No heroes found — run Cards > Pipeline > Import All.";
+            }
+            else
+            {
+                foreach (var hero in roster)
+                {
+                    string heroId = hero.HeroId;   // capture per-iteration for the closure
+                    var box = AddButton(content, $"Hero_{heroId}", hero.DisplayName, HeroBoxColor, 56,
+                        () => SelectHero(heroId));
+                    _heroBoxes.Add((heroId, box.GetComponent<Image>()));
+                }
+            }
+
+            AddSpacer(content, 10f);
+            AddButton(content, "BackButton", "Back", new Color(0.5f, 0.25f, 0.25f), 48,
+                () => ShowMainMenu());
+        }
+
+        public void ShowHeroSelect()
+        {
+            // Default any unpicked player to the first hero so a deck can always
+            // be built later, then reveal the picker.
+            var roster = HeroRuntime.Database.All;
+            if (roster.Count > 0)
+            {
+                string first = roster.First().HeroId;
+                for (int p = 0; p < 2; p++)
+                    if (string.IsNullOrEmpty(_controller.GetSelectedHero(p)))
+                        _controller.SetSelectedHero(p, first);
+            }
+
+            _mainMenuPanel.SetActive(false);
+            _hostPanel.SetActive(false);
+            _joinPanel.SetActive(false);
+            _heroSelectPanel.SetActive(true);
+            RefreshHeroSelect();
+        }
+
+        void ToggleHeroPlayer()
+        {
+            _heroSelectForPlayer = 1 - _heroSelectForPlayer;
+            RefreshHeroSelect();
+        }
+
+        void SelectHero(string heroId)
+        {
+            _controller.SetSelectedHero(_heroSelectForPlayer, heroId);
+            RefreshHeroSelect();
+        }
+
+        void RefreshHeroSelect()
+        {
+            _heroToggleLabel.text = $"Choosing for: Player {_heroSelectForPlayer + 1}";
+
+            string selected = _controller.GetSelectedHero(_heroSelectForPlayer);
+            foreach (var (heroId, box) in _heroBoxes)
+                box.color = heroId == selected ? HeroBoxSelectedColor : HeroBoxColor;
+        }
+
+        // ------------------------------------------------------------------
         // Screen transitions (called by GameController)
         // ------------------------------------------------------------------
 
@@ -162,6 +266,7 @@ namespace Game.Client.View
             _mainMenuPanel.SetActive(true);
             _hostPanel.SetActive(false);
             _joinPanel.SetActive(false);
+            _heroSelectPanel.SetActive(false);
             _menuStatusLabel.text = status ?? "";
         }
 
@@ -170,6 +275,7 @@ namespace Game.Client.View
             _mainMenuPanel.SetActive(false);
             _hostPanel.SetActive(true);
             _joinPanel.SetActive(false);
+            _heroSelectPanel.SetActive(false);
 
             _hostAddressLabel.text = $"Share with your opponent: {string.Join("  /  ", addresses)}   (port {port})";
             SetHostOpponentStatus(false, null);
@@ -188,6 +294,7 @@ namespace Game.Client.View
             _mainMenuPanel.SetActive(false);
             _hostPanel.SetActive(false);
             _joinPanel.SetActive(true);
+            _heroSelectPanel.SetActive(false);
             SetJoinStatus($"Connecting to {address}...");
         }
 

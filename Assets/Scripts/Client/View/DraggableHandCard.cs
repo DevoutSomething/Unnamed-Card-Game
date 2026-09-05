@@ -94,10 +94,13 @@ namespace Game.Client.View
             }
 
             // A spell never lands in a slot, so previewing one would be a lie
-            // about where it's going.
+            // about where it's going. Instead, recolor whatever it's currently
+            // aimed at green (legal) or red (illegal).
             if (IsSpell)
             {
                 Controller.ClearDropPreview();
+                var (hoverCardId, hoverHeroId) = FindSpellTarget(eventData);
+                Controller.UpdateSpellHover(hoverCardId, hoverHeroId);
                 return;
             }
 

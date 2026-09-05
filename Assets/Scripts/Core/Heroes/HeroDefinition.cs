@@ -25,8 +25,9 @@ namespace Game.Core.Heroes
         public string HeroId;
         public string DisplayName;
 
-        /// <summary>The fixed cards this hero always opens with (card ids).
-        /// Empty for now — populated once the per-hero base decks are chosen.</summary>
-        public List<string> BaseDeck = new();
+        /// <summary>The fixed cards this hero always opens with, as
+        /// (card id, quantity) pairs — e.g. ("brawler_01", 2) means two copies.
+        /// Empty for a hero whose base deck hasn't been authored yet.</summary>
+        public List<(string CardId, int Quantity)> BaseDeck = new();
     }
 }

@@ -1,0 +1,13 @@
+{
+    "cardId": "rend_01",
+    "type": "spell",
+    "displayName": "Rend",
+    "energyCost": 1,
+    "goldCost": 0,
+    "description": "Deal 2 damage to any guy or hero.",
+    "rarity": "Common",
+    "archetypes": [],
+    "tags": [],
+    "spellTarget": "AnyCharacter",
+    "damageAmount": 2
+}

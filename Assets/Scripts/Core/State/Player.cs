@@ -11,6 +11,10 @@ namespace Game.Core.State {
         public int CurrentEnergy;
         public int EnergyPerTurn;
 
+        // The hero this player picked before the match; drives their starting
+        // deck (see CommandResolver.BuildStarterDeck). Null = no pick (fallback).
+        public string HeroId;
+
         public int TurnNumber;
         public int SlotIndex;
 

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Game.Cards;
+using Game.Core.Heroes;
 using Game.Core.Lanes;
 using Game.Core.State;
 using UnityEngine;
@@ -68,10 +69,27 @@ namespace Game.Client.View
         static readonly Color PhaseNeutralColor = new Color(0.42f, 0.34f, 0.14f, 0.98f);
 
         static readonly Color DropPreviewColor = new Color(1f, 0.95f, 0.4f, 0.35f);
-        static readonly Color ValidTargetColor = new Color(0.45f, 1f, 0.68f, 1f);
+        // Yellow = a legal target (shown on all of them while aiming); green =
+        // the one the spell is currently over and can hit; red = hovering
+        // something it can't hit.
+        static readonly Color ValidTargetColor = new Color(1f, 0.9f, 0.3f, 1f);
+        static readonly Color HoverValidColor = new Color(0.35f, 1f, 0.45f, 1f);
+        static readonly Color HoverInvalidColor = new Color(1f, 0.35f, 0.32f, 1f);
 
         static readonly Color LaneEffectColor = new Color(0.38f, 0.30f, 0.62f, 0.85f);
         static readonly Color LanePlainColor = new Color(1f, 1f, 1f, 0.07f);
+
+        // ---- hero corner panels -----------------------------------------
+        const float HeroPanelW = 150f;
+        const float PortraitSize = 108f;
+        const float BatteryW = 92f;
+        const float BatteryH = 122f;
+        const int MaxEnergyDots = 10;      // display ceiling; see BuildHeroPanel's energy row
+        const float EnergyDotSize = 12f;
+        static readonly Color EnergyAvailColor = new Color(0.35f, 0.68f, 1f);   // available now
+        static readonly Color EnergySpentColor = new Color(0.45f, 0.47f, 0.52f); // spent this turn
+        static readonly Color EnergyLockedColor = new Color(0.07f, 0.08f, 0.11f); // not yet unlocked
+        static readonly Color HealthNumberColor = new Color(1f, 0.28f, 0.26f);
 
         GameController _controller;
         CardDatabase _db;
@@ -81,7 +99,10 @@ namespace Game.Client.View
         Text _phaseLabel;
         Text _rotationLabel;
         Text _messageLabel;
-        readonly Text[] _playerLabels = new Text[2];   // [0] = you, [1] = opponent
+        // Corner hero readouts (portrait + names + health battery + energy/gold):
+        // [0] = you (bottom-left), [1] = opponent (top-right). The drop targets and
+        // highlights the spell-targeting code uses now live on each portrait.
+        readonly HeroPanelRefs[] _heroPanels = new HeroPanelRefs[2];
         readonly HeroDropTarget[] _heroDropTargets = new HeroDropTarget[2];
         readonly GameObject[] _heroHighlights = new GameObject[2];
         Button _endPhaseButton;
@@ -104,6 +125,7 @@ namespace Game.Client.View
 
         Image _activeDropPreview;
         bool _targetsShown;
+        CardInstance _draggedSpell;   // the spell currently being aimed, for hover valid/invalid coloring
 
         GameState _lastState;
         int _lastViewerPlayerId;
@@ -213,27 +235,26 @@ namespace Game.Client.View
             bar.sizeDelta = new Vector2(0, StatBarH);
             bar.gameObject.AddComponent<Image>().color = BarColor;
 
-            _playerLabels[0] = AddLabel(bar, "YouStats", new Vector2(0, 0), new Vector2(0.5f, 1),
-                                        19, TextAnchor.MiddleLeft);
-            ((RectTransform)_playerLabels[0].transform).offsetMin = new Vector2(26, 0);
-
-            _playerLabels[1] = AddLabel(bar, "OpponentStats", new Vector2(0.5f, 0), new Vector2(1, 1),
-                                        19, TextAnchor.MiddleRight);
-            ((RectTransform)_playerLabels[1].transform).offsetMax = new Vector2(-26, 0);
-
             // A hairline under the bar, so the play area reads as its own region.
             var edge = AddRect(bar, "Edge", new Vector2(0, 0), new Vector2(1, 0));
             edge.pivot = new Vector2(0.5f, 1);
             edge.sizeDelta = new Vector2(0, 2f);
             edge.gameObject.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0.08f);
 
-            // Added after the labels so they sit on top in the raycast order —
-            // the labels themselves don't raycast, so these catch spell drops
-            // aimed at either hero.
-            _heroDropTargets[0] = AddHeroDropZone(bar, "YouHeroDrop", new Vector2(0, 0), new Vector2(0.5f, 1),
-                                                  out _heroHighlights[0]);
-            _heroDropTargets[1] = AddHeroDropZone(bar, "OpponentHeroDrop", new Vector2(0.5f, 0), new Vector2(1, 1),
-                                                  out _heroHighlights[1]);
+            // Player readouts live in the corners: you bottom-left, opponent
+            // top-right. Each portrait carries the hero drop target + highlight
+            // the spell-targeting code lights up.
+            _heroPanels[0] = BuildHeroPanel(canvas, "YouHeroPanel",
+                anchor: new Vector2(0f, 0f), pivot: new Vector2(0f, 0f),
+                offset: new Vector2(20f, 200f));
+            _heroPanels[1] = BuildHeroPanel(canvas, "OpponentHeroPanel",
+                anchor: new Vector2(1f, 1f), pivot: new Vector2(1f, 1f),
+                offset: new Vector2(-20f, -(PhaseBarH + StatBarH + 14f)));
+            for (int i = 0; i < 2; i++)
+            {
+                _heroDropTargets[i] = _heroPanels[i].DropTarget;
+                _heroHighlights[i] = _heroPanels[i].Highlight;
+            }
 
             _messageLabel = AddLabel(canvas, "Message", new Vector2(0.15f, 1), new Vector2(0.85f, 1),
                                      18, TextAnchor.MiddleCenter);
@@ -599,7 +620,16 @@ namespace Game.Client.View
             if (_lastState == null || spellCard == null) return;
             if (!(_db?.Get(spellCard.DefinitionId) is SpellCardDefinition def) || !def.NeedsTarget) return;
 
-            int casterId = spellCard.OwnerId;
+            _draggedSpell = spellCard;
+            _targetsShown = true;
+            PaintBaseTargets(def);
+        }
+
+        /// <summary>Outlines every legal target in yellow and hides the rest —
+        /// the resting state each frame, before the hovered one is recolored.</summary>
+        void PaintBaseTargets(SpellCardDefinition def)
+        {
+            int casterId = _draggedSpell.OwnerId;
 
             for (int lane = 0; lane < _lastState.Lanes.Length && lane < _targetHighlights.GetLength(0); lane++)
             {
@@ -610,28 +640,89 @@ namespace Game.Client.View
 
                     for (int slot = 0; slot < sublane.Slots.Length && slot < _targetHighlights.GetLength(2); slot++)
                     {
-                        var card = sublane.Slots[slot];
-                        if (card == null || card.CurrentHealth <= 0) continue;
-                        if (def.Target == SpellTarget.FriendlyGuy && card.OwnerId != casterId) continue;
-
                         var highlight = _targetHighlights[lane, screenRow, slot];
-                        if (highlight != null) highlight.SetActive(true);
+                        if (highlight == null) continue;
+
+                        var card = sublane.Slots[slot];
+                        bool valid = card != null && card.CurrentHealth > 0
+                                     && (def.Target != SpellTarget.FriendlyGuy || card.OwnerId == casterId);
+                        highlight.SetActive(valid);
+                        if (valid) SetOutlineColor(highlight, ValidTargetColor);
                     }
                 }
             }
 
             // Only "anything" reaches past the guys to the heroes themselves.
-            if (def.Target == SpellTarget.AnyCharacter)
+            bool heroesValid = def.Target == SpellTarget.AnyCharacter;
+            foreach (var highlight in _heroHighlights)
             {
-                foreach (var highlight in _heroHighlights)
-                    if (highlight != null) highlight.SetActive(true);
+                if (highlight == null) continue;
+                highlight.SetActive(heroesValid);
+                if (heroesValid) SetOutlineColor(highlight, ValidTargetColor);
             }
+        }
 
-            _targetsShown = true;
+        /// <summary>
+        /// Recolors whatever the dragged spell is currently over: green if it's a
+        /// legal hit, red if not — so aiming at an illegal target reads as a
+        /// refusal before the drop. Called every frame of a spell drag.
+        /// </summary>
+        public void UpdateSpellHover(int hoveredCardId, int hoveredHeroPlayerId)
+        {
+            if (!_targetsShown || _draggedSpell == null || _lastState == null) return;
+            if (!(_db?.Get(_draggedSpell.DefinitionId) is SpellCardDefinition def) || !def.NeedsTarget) return;
+
+            PaintBaseTargets(def);   // reset last frame's hover coloring first
+
+            if (hoveredHeroPlayerId >= 0)
+            {
+                int panel = hoveredHeroPlayerId == _lastViewerPlayerId ? 0 : 1;
+                var hl = _heroHighlights[panel];
+                if (hl == null) return;
+                hl.SetActive(true);
+                SetOutlineColor(hl, def.Target == SpellTarget.AnyCharacter ? HoverValidColor : HoverInvalidColor);
+            }
+            else if (hoveredCardId >= 0 && FindCardCell(hoveredCardId, out int lane, out int row, out int slot))
+            {
+                var hl = _targetHighlights[lane, row, slot];
+                if (hl == null) return;
+
+                int ownerId = row == 0 ? _lastViewerPlayerId : 1 - _lastViewerPlayerId;
+                var card = _lastState.Lanes[lane].SublaneOf(ownerId).Slots[slot];
+                bool valid = card != null && card.CurrentHealth > 0
+                             && (def.Target != SpellTarget.FriendlyGuy || card.OwnerId == _draggedSpell.OwnerId);
+
+                hl.SetActive(true);
+                SetOutlineColor(hl, valid ? HoverValidColor : HoverInvalidColor);
+            }
+        }
+
+        bool FindCardCell(int cardId, out int lane, out int row, out int slot)
+        {
+            for (int l = 0; l < _lastState.Lanes.Length && l < _targetHighlights.GetLength(0); l++)
+                for (int r = 0; r < 2; r++)
+                {
+                    int ownerId = r == 0 ? _lastViewerPlayerId : 1 - _lastViewerPlayerId;
+                    var sub = _lastState.Lanes[l].SublaneOf(ownerId);
+                    for (int s = 0; s < sub.Slots.Length && s < _targetHighlights.GetLength(2); s++)
+                        if (sub.Slots[s] != null && sub.Slots[s].InstanceId == cardId)
+                        {
+                            lane = l; row = r; slot = s; return true;
+                        }
+                }
+            lane = row = slot = -1;
+            return false;
+        }
+
+        static void SetOutlineColor(GameObject outline, Color color)
+        {
+            foreach (var img in outline.GetComponentsInChildren<Image>(true))
+                img.color = color;
         }
 
         public void ClearSpellTargets()
         {
+            _draggedSpell = null;
             if (!_targetsShown) return;
 
             foreach (var highlight in _targetHighlights)
@@ -860,8 +951,8 @@ namespace Game.Client.View
         {
             int opponentId = 1 - viewerPlayerId;
 
-            _playerLabels[0].text = FormatPlayerStats("YOU", viewerPlayerId, state.Players[viewerPlayerId], viewerActive);
-            _playerLabels[1].text = FormatPlayerStats("OPPONENT", opponentId, state.Players[opponentId], opponentActive);
+            RefreshHeroPanel(_heroPanels[0], state.Players[viewerPlayerId], "YOU", viewerPlayerId);
+            RefreshHeroPanel(_heroPanels[1], state.Players[opponentId], "OPPONENT", opponentId);
 
             _heroDropTargets[0].PlayerId = viewerPlayerId;
             _heroDropTargets[1].PlayerId = opponentId;
@@ -932,6 +1023,170 @@ namespace Game.Client.View
         }
 
         public void ShowMessage(string message) => _messageLabel.text = message ?? "";
+
+        // ------------------------------------------------------------------
+        // Hero corner panels
+        // ------------------------------------------------------------------
+
+        /// <summary>Sub-elements of one corner hero readout, refreshed each Redraw.</summary>
+        class HeroPanelRefs
+        {
+            public Text PlayerName;
+            public Text HeroName;
+            public Text HealthText;
+            public Text GoldText;
+            public RectTransform EnergyRow;
+            public readonly List<Image> EnergyDots = new List<Image>();
+            public HeroDropTarget DropTarget;
+            public GameObject Highlight;
+            public UiShaker HealthShaker;
+        }
+
+        static Sprite _batterySprite;
+        static Sprite _heroSprite;
+        static Sprite BatterySprite() => _batterySprite != null ? _batterySprite : (_batterySprite = Resources.Load<Sprite>("UI/health_battery"));
+        static Sprite HeroSprite() => _heroSprite != null ? _heroSprite : (_heroSprite = Resources.Load<Sprite>("UI/hero_default"));
+
+        /// <summary>
+        /// Builds one corner readout: player name, portrait (which is also the
+        /// spell drop target for aiming at this hero), hero name, energy dots,
+        /// gold, and a health battery with the total painted over it in red.
+        /// Stacked top-to-bottom by a VerticalLayoutGroup so the pieces keep
+        /// their order whichever corner the panel is pinned to.
+        /// </summary>
+        HeroPanelRefs BuildHeroPanel(Transform canvas, string name, Vector2 anchor, Vector2 pivot, Vector2 offset)
+        {
+            var refs = new HeroPanelRefs();
+
+            var root = AddRect(canvas, name, anchor, anchor);
+            root.pivot = pivot;
+            root.anchoredPosition = offset;
+            root.sizeDelta = new Vector2(HeroPanelW, 340f);
+
+            var col = root.gameObject.AddComponent<VerticalLayoutGroup>();
+            col.childAlignment = TextAnchor.UpperCenter;
+            col.spacing = 3f;
+            col.childControlWidth = true;
+            col.childControlHeight = true;
+            col.childForceExpandWidth = true;
+            col.childForceExpandHeight = false;
+
+            // 1. player name (straight for now; curved is a later polish pass)
+            refs.PlayerName = AddPanelLabel(root, "PlayerName", 18, FontStyle.Bold, TextBright, 24f);
+
+            // 2. portrait (square, centered) — doubles as the hero drop target/highlight
+            var portraitRow = AddRect(root, "PortraitRow", Vector2.zero, Vector2.one);
+            AddLayoutHeight(portraitRow, PortraitSize);
+            var portrait = AddRect(portraitRow, "Portrait", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f));
+            portrait.sizeDelta = new Vector2(PortraitSize, PortraitSize);
+            var pImg = portrait.gameObject.AddComponent<Image>();
+            pImg.sprite = HeroSprite();
+            pImg.preserveAspect = true;
+            pImg.raycastTarget = true;   // catches spell drops aimed at this hero
+            refs.DropTarget = portrait.gameObject.AddComponent<HeroDropTarget>();
+            refs.Highlight = AddOutline(portrait, "ValidTarget", 3f, ValidTargetColor, inset: 2f);
+            refs.Highlight.SetActive(false);
+
+            // 3. hero name
+            refs.HeroName = AddPanelLabel(root, "HeroName", 15, FontStyle.Normal, TextDim, 20f);
+
+            // 4. energy dots (blue = available, grey = spent, black = locked); rebuilt on refresh
+            var energyRow = AddRect(root, "Energy", Vector2.zero, Vector2.one);
+            AddLayoutHeight(energyRow, EnergyDotSize + 2f);
+            var dots = energyRow.gameObject.AddComponent<HorizontalLayoutGroup>();
+            dots.childAlignment = TextAnchor.MiddleCenter;
+            dots.spacing = 3f;
+            dots.childControlWidth = false;
+            dots.childControlHeight = false;
+            dots.childForceExpandWidth = false;
+            dots.childForceExpandHeight = false;
+            refs.EnergyRow = energyRow;
+
+            // 5. gold
+            refs.GoldText = AddPanelLabel(root, "Gold", 15, FontStyle.Bold, AccentGold, 20f);
+
+            // 6. health battery with the total in red, shaken when this hero is hurt
+            var healthSlot = AddRect(root, "HealthSlot", Vector2.zero, Vector2.one);
+            AddLayoutHeight(healthSlot, BatteryH);
+            var shake = AddRect(healthSlot, "Shake", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f));
+            shake.sizeDelta = new Vector2(BatteryW, BatteryH);
+            refs.HealthShaker = shake.gameObject.AddComponent<UiShaker>();
+            var battery = AddRect(shake, "Battery", Vector2.zero, Vector2.one);
+            var bImg = battery.gameObject.AddComponent<Image>();
+            bImg.sprite = BatterySprite();
+            bImg.preserveAspect = true;
+            bImg.raycastTarget = false;
+            refs.HealthText = AddLabel(shake, "HP", Vector2.zero, Vector2.one, 32, TextAnchor.MiddleCenter);
+            refs.HealthText.color = HealthNumberColor;
+            refs.HealthText.fontStyle = FontStyle.Bold;
+
+            return refs;
+        }
+
+        void RefreshHeroPanel(HeroPanelRefs refs, Player p, string playerLabel, int playerId)
+        {
+            refs.PlayerName.text = $"{playerLabel} (P{playerId + 1})";
+
+            string heroName = "—";   // em dash when no hero picked
+            if (!string.IsNullOrEmpty(p.HeroId) && HeroRuntime.Database.TryGet(p.HeroId, out var hero))
+                heroName = hero.DisplayName;
+            refs.HeroName.text = heroName;
+
+            refs.HealthText.text = $"{p.Health}/{p.MaxHealth}";
+            refs.GoldText.text = $"Gold {p.Gold}";
+
+            RefreshEnergyDots(refs, p);
+        }
+
+        void RefreshEnergyDots(HeroPanelRefs refs, Player p)
+        {
+            int available = Mathf.Max(0, p.CurrentEnergy);
+            int unlocked = Mathf.Max(available, p.EnergyPerTurn);
+            int total = Mathf.Max(MaxEnergyDots, unlocked);
+
+            while (refs.EnergyDots.Count < total)
+            {
+                var dot = AddRect(refs.EnergyRow, "Dot", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f));
+                dot.sizeDelta = new Vector2(EnergyDotSize, EnergyDotSize);
+                var img = dot.gameObject.AddComponent<Image>();
+                img.raycastTarget = false;
+                refs.EnergyDots.Add(img);
+            }
+
+            for (int i = 0; i < refs.EnergyDots.Count; i++)
+            {
+                bool beyond = i >= total;
+                refs.EnergyDots[i].gameObject.SetActive(!beyond);
+                if (beyond) continue;
+                refs.EnergyDots[i].color =
+                    i < available ? EnergyAvailColor :
+                    i < unlocked ? EnergySpentColor :
+                    EnergyLockedColor;
+            }
+        }
+
+        /// <summary>Jolt a player's health readout — called when they take damage.</summary>
+        public void ShakeHero(int playerId)
+        {
+            if (_lastState == null) return;
+            int panel = playerId == _lastViewerPlayerId ? 0 : 1;
+            if (_heroPanels[panel] != null && _heroPanels[panel].HealthShaker != null)
+                _heroPanels[panel].HealthShaker.Shake();
+        }
+
+        Text AddPanelLabel(RectTransform parent, string name, int size, FontStyle style, Color color, float height)
+        {
+            var label = AddLabel(parent, name, Vector2.zero, Vector2.one, size, TextAnchor.MiddleCenter);
+            label.color = color;
+            label.fontStyle = style;
+            AddLayoutHeight((RectTransform)label.transform, height);
+            return label;
+        }
+
+        static void AddLayoutHeight(RectTransform rect, float preferredHeight)
+        {
+            rect.gameObject.AddComponent<LayoutElement>().preferredHeight = preferredHeight;
+        }
 
         // ------------------------------------------------------------------
         // helpers

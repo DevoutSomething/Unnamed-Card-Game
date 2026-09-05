@@ -9,18 +9,17 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6ab3ec2384fc3cc48bf12111d8356500, type: 3}
-  m_Name: brawler_01
-  m_EditorClassIdentifier: Assembly-CSharp::Game.Cards.GuyCardDefinition
-  CardId: brawler_01
-  DisplayName: Brawler
+  m_Script: {fileID: 11500000, guid: 1184136d3e27da142bf845e7ec4dd067, type: 3}
+  m_Name: rage_01
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Cards.SpellCardDefinition
+  CardId: rage_01
+  DisplayName: Rage
   EnergyCost: 2
   GoldCost: 0
-  Description: Overkill.
+  Description: Give a friendly guy +1 Attack and Overkill.
   Rarity: 1
-  Archetypes: 0200000000000000
-  Tags:
-  - bruiser
+  Archetypes: 
+  Tags: []
   Conjure:
     Count: 0
     Kind: 0
@@ -34,9 +33,11 @@ MonoBehaviour:
     CostReduction: 0
     AttackBonus: 0
     HealthBonus: 0
-  BaseAttack: 3
-  BaseHealth: 2
-  Abilities:
-  - Id: overkill
-    X: 1
-  KillRewardGold: 25
+  Target: 2
+  DamageAmount: 0
+  HealAmount: 0
+  BuffAttack: 1
+  BuffHealth: 0
+  DrawCount: 0
+  GrantAbilityId: overkill
+  GrantAbilityX: 1

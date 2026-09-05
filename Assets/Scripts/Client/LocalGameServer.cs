@@ -30,10 +30,10 @@ namespace Game.Client
         /// initial slot). Subscribers receive the StartGame event batch,
         /// so subscribe to OnEvents BEFORE calling this.
         /// </summary>
-        public void StartNewGame(int seed)
+        public void StartNewGame(int seed, string[] heroIds = null)
         {
             State = new GameState(seed);
-            Submit(new StartGameCommand(0));
+            Submit(new StartGameCommand(0, heroIds));
         }
 
         /// <summary>

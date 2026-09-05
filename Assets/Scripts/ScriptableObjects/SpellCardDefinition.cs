@@ -33,6 +33,16 @@ namespace Game.Cards {
         public int BuffHealth;
         public int DrawCount;
 
+        [Header("Grant — gives the target guy a keyword ability")]
+        [Tooltip("Ability id to grant to the target guy (e.g. 'lifesteal', 'overkill'). " +
+                 "Blank = grant nothing. The target must be a guy, not a hero.")]
+        public string GrantAbilityId;
+        [Tooltip("Magnitude X of the granted ability (e.g. lifesteal 1).")]
+        public int GrantAbilityX = 1;
+
         public bool NeedsTarget => Target != SpellTarget.None;
+
+        /// <summary>True if this spell grants a keyword to its target.</summary>
+        public bool GrantsAbility => !string.IsNullOrWhiteSpace(GrantAbilityId);
     }
 }

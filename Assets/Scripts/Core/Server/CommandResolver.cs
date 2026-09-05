@@ -4,6 +4,7 @@ using Game.Cards;
 using Game.Core.Abilities;
 using Game.Core.Commands;
 using Game.Core.Events;
+using Game.Core.Heroes;
 using Game.Core.Lanes;
 using Game.Core.State;
 
@@ -60,6 +61,9 @@ namespace Game.Core.Server
 
             foreach (var player in state.Players)
             {
+                if (cmd.HeroIds != null && player.Id >= 0 && player.Id < cmd.HeroIds.Length)
+                    player.HeroId = cmd.HeroIds[player.Id];
+
                 BuildStarterDeck(state, player);
                 state.Rng.Shuffle(player.Deck);
 
@@ -136,6 +140,17 @@ namespace Game.Core.Server
         /// </summary>
         private static void BuildStarterDeck(GameState state, Player player)
         {
+            // A picked hero with an authored base deck deals exactly that deck
+            // (see HeroDefinition.BaseDeck). Falls through to the old behavior
+            // for players who picked no hero or a hero whose deck is unauthored.
+            if (!string.IsNullOrEmpty(player.HeroId) &&
+                HeroRuntime.Database.TryGet(player.HeroId, out var hero) &&
+                hero.BaseDeck != null && hero.BaseDeck.Count > 0)
+            {
+                BuildHeroBaseDeck(state, player, hero);
+                return;
+            }
+
             // No configured catalog (logic tests, headless tools): the vanilla
             // stat-line deck, as this method's summary has always claimed.
             // Without this the pool is empty and every player starts with no
@@ -167,6 +182,23 @@ namespace Game.Core.Server
             {
                 if (CardFactory.TryCreate(state, def, player.Id, out var card, out _))
                     player.Deck.Add(card);
+            }
+        }
+
+        /// <summary>
+        /// Builds a deck from a hero's authored base deck: each (cardId, quantity)
+        /// entry becomes that many fresh instances. Card ids missing from the
+        /// catalog are skipped rather than crashing the match.
+        /// </summary>
+        private static void BuildHeroBaseDeck(GameState state, Player player, HeroDefinition hero)
+        {
+            foreach (var (cardId, quantity) in hero.BaseDeck)
+            {
+                var def = FindDefinition(cardId);
+                if (def == null) continue;
+                for (int i = 0; i < quantity; i++)
+                    if (CardFactory.TryCreate(state, def, player.Id, out var card, out _))
+                        player.Deck.Add(card);
             }
         }
 
@@ -345,6 +377,11 @@ namespace Game.Core.Server
             if ((def.BuffAttack != 0 || def.BuffHealth != 0) && targetCard != null)
             {
                 MutationHelper.ApplyStatModifier(targetCard, def.BuffAttack, def.BuffHealth, events);
+            }
+
+            if (def.GrantsAbility && targetCard != null)
+            {
+                MutationHelper.GrantAbility(targetCard, def.GrantAbilityId, def.GrantAbilityX, events);
             }
 
             for (int i = 0; i < def.DrawCount; i++)

@@ -167,6 +167,7 @@ namespace Game.Core.Tests
         public void Bounty_GrantsGoldToKillersOwnerOnCombatKill()
         {
             var state = new GameState(seed: 1);
+            int ownerStart = state.Players[0].Gold;
             var events = new List<GameEvent>();
             var killer = CardFactory.Create(state, Guy(attack: 5), 0);
             killer.Abilities.Add(new AbilityRef { Id = "bounty", X = 2 });
@@ -177,7 +178,7 @@ namespace Game.Core.Tests
             CombatResolver.Resolve(state, events);
 
             // killRewardGold (3) + bounty (2)
-            Assert.AreEqual(5, state.Players[0].Gold);
+            Assert.AreEqual(ownerStart + 5, state.Players[0].Gold);
         }
 
         // ---------- Card meta tags & skin validity ----------

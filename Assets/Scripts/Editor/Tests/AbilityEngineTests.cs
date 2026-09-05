@@ -217,13 +217,14 @@ namespace Game.Core.Tests
         public void Rob_StealsDamageTimesXWhenHittingThePlayer()
         {
             var state = new GameState(seed: 1);
+            int thiefStart = state.Players[0].Gold;
             state.Players[1].Gold = 10;
             PlaceGuy(state, 0, 0, 0, attack: 2, health: 10, abilities: ("rob", 2));
             // no blockers: the attack hits the player for 2 -> steals 2 * 2 = 4
 
             RunCombat(state);
 
-            Assert.AreEqual(4, state.Players[0].Gold, "stole damage (2) * X (2)");
+            Assert.AreEqual(thiefStart + 4, state.Players[0].Gold, "stole damage (2) * X (2)");
             Assert.AreEqual(6, state.Players[1].Gold);
         }
 
@@ -231,13 +232,14 @@ namespace Game.Core.Tests
         public void Rob_DoesNotStealWhenBlocked()
         {
             var state = new GameState(seed: 1);
+            int thiefStart = state.Players[0].Gold;
             state.Players[1].Gold = 10;
             PlaceGuy(state, 0, 0, 0, attack: 2, health: 10, abilities: ("rob", 2));
             PlaceGuy(state, 1, 0, 0, attack: 0, health: 10);   // soaks the hit: no player damage
 
             RunCombat(state);
 
-            Assert.AreEqual(0, state.Players[0].Gold, "rob fires only on player damage");
+            Assert.AreEqual(thiefStart, state.Players[0].Gold, "rob fires only on player damage");
             Assert.AreEqual(10, state.Players[1].Gold);
         }
 
@@ -245,13 +247,14 @@ namespace Game.Core.Tests
         public void Rob_IsCappedByVictimsGold()
         {
             var state = new GameState(seed: 1);
+            int thiefStart = state.Players[0].Gold;
             state.Players[1].Gold = 2;
             PlaceGuy(state, 0, 0, 0, attack: 3, health: 10, abilities: ("rob", 3));
             // face hit for 3 -> wants 9, victim only has 2
 
             RunCombat(state);
 
-            Assert.AreEqual(2, state.Players[0].Gold, "can only steal what exists");
+            Assert.AreEqual(thiefStart + 2, state.Players[0].Gold, "can only steal what exists");
             Assert.AreEqual(0, state.Players[1].Gold);
         }
 
@@ -282,16 +285,20 @@ namespace Game.Core.Tests
             var state = new GameState(seed: 42);
             CommandResolver.Resolve(state, new StartGameCommand(0));
 
-            state.Players[1].Health = 90;
+            // Measured against the actual MaxHealth so the test tracks the tunable
+            // starting-health value instead of a hardcoded one.
+            int max = state.Players[1].MaxHealth;
+            int opponentBefore = state.Players[0].Health;
+            state.Players[1].Health = max - 5;
             PlaceGuy(state, 1, 0, 0, attack: 1, health: 5, abilities: ("heroregen", 3));
 
             CommandResolver.Resolve(state, new EndPhaseCommand(0));   // -> P1's turn
-            Assert.AreEqual(93, state.Players[1].Health, "hero regen 3 healed the owner");
-            Assert.AreEqual(100, state.Players[0].Health, "opponent untouched");
+            Assert.AreEqual(max - 2, state.Players[1].Health, "hero regen 3 healed the owner");
+            Assert.AreEqual(opponentBefore, state.Players[0].Health, "opponent untouched");
 
-            state.Players[1].Health = 99;
+            state.Players[1].Health = max - 1;
             CommandResolver.Resolve(state, new EndPhaseCommand(1));   // -> P1 again
-            Assert.AreEqual(100, state.Players[1].Health, "capped at MaxHealth");
+            Assert.AreEqual(max, state.Players[1].Health, "capped at MaxHealth");
         }
 
         // ---------- gold generation / stealing (start of turn) ----------
@@ -301,12 +308,14 @@ namespace Game.Core.Tests
         {
             var state = new GameState(seed: 42);
             CommandResolver.Resolve(state, new StartGameCommand(0));
+            int p1Start = state.Players[1].Gold;
+            int p0Start = state.Players[0].Gold;
             PlaceGuy(state, 1, 0, 0, attack: 2, health: 2, abilities: ("goldgen", 10));
 
             CommandResolver.Resolve(state, new EndPhaseCommand(0));   // -> P1's turn
 
-            Assert.AreEqual(10, state.Players[1].Gold, "investor income fired");
-            Assert.AreEqual(0, state.Players[0].Gold);
+            Assert.AreEqual(p1Start + 10, state.Players[1].Gold, "investor income fired");
+            Assert.AreEqual(p0Start, state.Players[0].Gold);
         }
 
         [Test]
@@ -314,12 +323,13 @@ namespace Game.Core.Tests
         {
             var state = new GameState(seed: 42);
             CommandResolver.Resolve(state, new StartGameCommand(0));
+            int p1Start = state.Players[1].Gold;
             state.Players[0].Gold = 20;
             PlaceGuy(state, 1, 0, 0, attack: 5, health: 4, abilities: ("goldsteal", 15));
 
             CommandResolver.Resolve(state, new EndPhaseCommand(0));   // -> P1's turn
 
-            Assert.AreEqual(15, state.Players[1].Gold, "landlord stole");
+            Assert.AreEqual(p1Start + 15, state.Players[1].Gold, "landlord stole");
             Assert.AreEqual(5, state.Players[0].Gold, "victim paid, capped by purse");
         }
 
@@ -329,14 +339,16 @@ namespace Game.Core.Tests
         public void Bounty_MutualKillPaysBothKillersRegardlessOfSeat()
         {
             var state = new GameState(seed: 1);
+            int p0Start = state.Players[0].Gold;
+            int p1Start = state.Players[1].Gold;
             PlaceGuy(state, 0, 0, 0, attack: 3, health: 3, killGold: 1, abilities: ("bounty", 2));
             PlaceGuy(state, 1, 0, 0, attack: 3, health: 3, killGold: 1, abilities: ("bounty", 2));
 
             RunCombat(state);
 
             // Each side collects the other's killRewardGold (1) plus its own bounty (2).
-            Assert.AreEqual(3, state.Players[0].Gold, "P0's killer died in the trade but still earns its bounty");
-            Assert.AreEqual(3, state.Players[1].Gold, "same trade, same gold — no seat advantage");
+            Assert.AreEqual(p0Start + 3, state.Players[0].Gold, "P0's killer died in the trade but still earns its bounty");
+            Assert.AreEqual(p1Start + 3, state.Players[1].Gold, "same trade, same gold — no seat advantage");
         }
 
         [Test]
@@ -346,13 +358,14 @@ namespace Game.Core.Tests
             // Killer swings first and combat-kills the victim; the victim's dead
             // counterswing then takes thorns back — that post-mortem direct hit
             // must not overwrite who combat-killed it.
+            int p0Start = state.Players[0].Gold;
             PlaceGuy(state, 0, 0, 0, attack: 5, health: 10,
                      abilities: new[] { ("thorns", 1), ("bounty", 2) });
             PlaceGuy(state, 1, 0, 0, attack: 2, health: 3, killGold: 4);
 
             RunCombat(state);
 
-            Assert.AreEqual(6, state.Players[0].Gold, "kill gold (4) + bounty (2) survive the corpse's thorns hit");
+            Assert.AreEqual(p0Start + 6, state.Players[0].Gold, "kill gold (4) + bounty (2) survive the corpse's thorns hit");
         }
 
         // ---------- hero damage ----------
@@ -377,13 +390,14 @@ namespace Game.Core.Tests
         public void GuyDamage_KillsWithoutAwardingKillGold()
         {
             var state = new GameState(seed: 1);
+            int p0Start = state.Players[0].Gold;
             PlaceGuy(state, 0, 0, 0, attack: 0, health: 10, abilities: ("guydamage", 2));
             var victim = PlaceGuy(state, 1, 3, 0, attack: 0, health: 2, killGold: 9);  // only enemy on board
 
             var events = RunCombat(state);
 
             Assert.IsNull(state.Lanes[3].P2.Slots[0], "victim died to guy damage");
-            Assert.AreEqual(0, state.Players[0].Gold, "spell-like kill must award no gold");
+            Assert.AreEqual(p0Start, state.Players[0].Gold, "spell-like kill must award no gold");
             Assert.IsTrue(events.OfType<CardDiedEvent>().Any(e => e.CardInstanceId == victim.InstanceId));
         }
 

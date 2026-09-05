@@ -5,7 +5,7 @@
   "energyCost": 2,
   "goldCost": 0,
   "description": "Overkill.",
-  "rarity": "Common",
+  "rarity": "Rare",
   "archetypes": ["Bruiser", "Colorless"],
   "tags": ["bruiser"],
   "baseAttack": 3,

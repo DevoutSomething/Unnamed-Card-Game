@@ -131,6 +131,33 @@ namespace Game.Core.Server
         }
 
         /// <summary>
+        /// Grants a keyword ability to a single guy instance (e.g. a spell that
+        /// gives its target lifesteal). Merges into an existing copy by taking the
+        /// larger X, so a guy never carries the same ability twice; a grant that
+        /// wouldn't make the guy any stronger is a no-op. The instance carries its
+        /// own ability list (CardFactory copies it from the definition), so this
+        /// only affects this one guy, never the card asset.
+        /// </summary>
+        public static void GrantAbility(CardInstance card, string abilityId, int x, List<GameEvent> events)
+        {
+            if (card == null || string.IsNullOrWhiteSpace(abilityId)) return;
+            if (x < 1) x = 1;
+
+            var existing = card.Abilities.Find(a => a != null && a.Id == abilityId);
+            if (existing != null)
+            {
+                if (x <= existing.X) return;   // already at least this strong
+                existing.X = x;
+            }
+            else
+            {
+                card.Abilities.Add(new AbilityRef { Id = abilityId, X = x });
+            }
+
+            events.Add(new CardGainedAbilityEvent(card.InstanceId, abilityId, x));
+        }
+
+        /// <summary>
         /// A permanent, asymmetric, possibly-NEGATIVE stat change — what lane
         /// modifiers apply on entry. Differs from BuffStats in three ways that
         /// matter: attack and health move independently (+0/+2), negatives are
