@@ -30,6 +30,13 @@ public record EndShopCommand(int PlayerId) : Command(PlayerId);
 /// be one of the player's own current offers.</summary>
 public record SelectAugmentCommand(int PlayerId, string AugmentId) : Command(PlayerId);
 
+/// <summary>Polled by every client's GameController.Update() while the augment
+/// timer runs; a no-op unless the resolver's own clock confirms the window has
+/// closed, so it's safe to submit speculatively and repeatedly. On expiry it
+/// picks FOR anyone who hasn't chosen — nobody stalls the rotation by walking
+/// away from the screen. No PlayerId: it resolves the phase for both players.</summary>
+public record ForceEndAugmentCommand() : Command(-1);
+
 /// <summary>Polled by every client's GameController.Update() while the shop's
 /// timer is running (see CommandResolver.ShopTimeLimitSeconds); a no-op unless
 /// the resolver's own clock confirms the deadline has actually passed, so it's

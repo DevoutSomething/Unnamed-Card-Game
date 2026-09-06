@@ -49,6 +49,7 @@ namespace Game.Core.Server
                 case EndShopCommand es:             HandleEndShop(state, es, events);              break;
                 case ForceEndShopCommand fe:        HandleForceEndShop(state, fe, events);         break;
                 case SelectAugmentCommand sa:       HandleSelectAugment(state, sa, events);        break;
+                case ForceEndAugmentCommand fa:     HandleForceEndAugment(state, fa, events);      break;
                 default:
                     events.Add(new CommandRejectedEvent(cmd, "unknown command type"));
                     break;
@@ -580,6 +581,10 @@ namespace Game.Core.Server
         /// <summary>How many augments each player chooses between.</summary>
         private const int AugmentOfferCount = 3;
 
+        /// <summary>How long the pick window stays open before one is chosen for
+        /// you. Easily changeable.</summary>
+        private const int AugmentTimeLimitSeconds = 30;
+
         /// <summary>
         /// A rotation ends in EITHER an augment pick or a shop visit, never both.
         /// Both slots sit in the rotation table; whichever one isn't this
@@ -602,6 +607,8 @@ namespace Game.Core.Server
                 AdvanceSlot(state, events);   // this rotation's interlude is the shop
                 return;
             }
+
+            state.AugmentDeadlineUtc = DateTime.UtcNow.AddSeconds(AugmentTimeLimitSeconds);
 
             foreach (var player in state.Players)
             {
@@ -627,6 +634,7 @@ namespace Game.Core.Server
             // Neither player had anything to choose: don't strand the rotation.
             if (state.Players[0].AugmentPicked && state.Players[1].AugmentPicked)
             {
+                LeaveAugmentPhase(state);
                 AdvanceSlot(state, events);
             }
         }
@@ -659,17 +667,62 @@ namespace Game.Core.Server
                 return;
             }
 
+            TakeAugment(state, player, def, events);
+
+            if (state.Players[0].AugmentPicked && state.Players[1].AugmentPicked)
+            {
+                LeaveAugmentPhase(state);
+                AdvanceSlot(state, events);
+            }
+        }
+
+        /// <summary>
+        /// Polled by clients while the augment timer runs; a no-op unless the
+        /// window has actually closed by the resolver's OWN clock — safe to
+        /// submit speculatively, repeatedly, from any client.
+        ///
+        /// On expiry it picks for whoever hasn't chosen, at random from their own
+        /// offers, so an idle player still gets an augment rather than being
+        /// skipped and falling behind.
+        /// </summary>
+        private static void HandleForceEndAugment(GameState state, ForceEndAugmentCommand cmd, List<GameEvent> events)
+        {
+            if (state.CurrentSlotType != SlotType.Augment) return;
+            if (!state.AugmentDeadlineUtc.HasValue || DateTime.UtcNow < state.AugmentDeadlineUtc.Value) return;
+
+            foreach (var player in state.Players)
+            {
+                if (player.AugmentPicked) continue;
+                if (player.AugmentOffers.Count == 0) { player.AugmentPicked = true; continue; }
+
+                var def = AugmentCatalogRuntime.Get(state.Rng.Pick(player.AugmentOffers));
+                if (def == null) { player.AugmentPicked = true; continue; }
+
+                TakeAugment(state, player, def, events);
+            }
+
+            LeaveAugmentPhase(state);
+            AdvanceSlot(state, events);
+        }
+
+        /// <summary>Grants an augment and latches the player as done — shared by
+        /// the deliberate pick and the timer's auto-pick so both take exactly the
+        /// same path.</summary>
+        private static void TakeAugment(
+            GameState state, Player player, AugmentDefinition def, List<GameEvent> events)
+        {
             player.Augments.Add(def.AugmentId);
             player.AugmentPicked = true;
             player.AugmentOffers.Clear();
             events.Add(new AugmentSelectedEvent(player.Id, def.AugmentId));
 
             ApplyAugmentOnTake(state, player, def, events);
+        }
 
-            if (state.Players[0].AugmentPicked && state.Players[1].AugmentPicked)
-            {
-                AdvanceSlot(state, events);
-            }
+        private static void LeaveAugmentPhase(GameState state)
+        {
+            state.AugmentDeadlineUtc = null;
+            foreach (var player in state.Players) player.AugmentOffers.Clear();
         }
 
         /// <summary>

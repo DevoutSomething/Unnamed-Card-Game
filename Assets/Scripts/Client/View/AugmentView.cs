@@ -53,6 +53,7 @@ namespace Game.Client.View
         Text _titleLabel;
         Text _statusLabel;
         Text _takenLabel;
+        Text _timerLabel;
 
         readonly Button[] _optionButtons = new Button[OptionCount];
         readonly Image[] _optionImages = new Image[OptionCount];
@@ -107,6 +108,13 @@ namespace Game.Client.View
 
             _statusLabel = AddLabel(bar, "Status", new Vector2(0, 0), new Vector2(1, 0.4f), 18, TextAnchor.MiddleCenter);
             _statusLabel.color = TextDim;
+
+            _timerLabel = AddLabel(bar, "Timer", new Vector2(1, 0), new Vector2(1, 1), 30, TextAnchor.MiddleRight);
+            var timerRect = (RectTransform)_timerLabel.transform;
+            timerRect.pivot = new Vector2(1, 0.5f);
+            timerRect.sizeDelta = new Vector2(180, 0);
+            timerRect.anchoredPosition = new Vector2(-40, 0);
+            _timerLabel.fontStyle = FontStyle.Bold;
 
             _takenLabel = AddLabel(canvas, "Taken", new Vector2(0, 0), new Vector2(1, 0.08f), 17, TextAnchor.MiddleCenter);
             _takenLabel.color = TextDim;
@@ -202,15 +210,36 @@ namespace Game.Client.View
         // Redraw
         // ------------------------------------------------------------------
 
+        /// <summary>Called every frame while the Augment slot is active (see
+        /// GameController.Update) so the countdown ticks smoothly without the
+        /// cost of a full Redraw.</summary>
+        public void TickCountdown(GameState state) => UpdateTimerLabel(state);
+
+        void UpdateTimerLabel(GameState state)
+        {
+            if (!state.AugmentDeadlineUtc.HasValue)
+            {
+                _timerLabel.text = "";
+                return;
+            }
+
+            double remaining = System.Math.Max(
+                0, (state.AugmentDeadlineUtc.Value - System.DateTime.UtcNow).TotalSeconds);
+            _timerLabel.text = $"{System.Math.Ceiling(remaining):0}s";
+            _timerLabel.color = remaining <= 10 ? new Color(1f, 0.4f, 0.35f) : TextBright;
+        }
+
         public void Redraw(GameState state, int viewerPlayerId)
         {
             var player = state.Players[viewerPlayerId];
             var opponent = state.Players[1 - viewerPlayerId];
 
+            UpdateTimerLabel(state);
+
             bool waiting = player.AugmentPicked && !opponent.AugmentPicked;
             _statusLabel.text = player.AugmentPicked
                 ? (waiting ? "waiting for your opponent to choose..." : "")
-                : "Pick one — it lasts the rest of the match.";
+                : "Pick one — it lasts the rest of the match. One is chosen for you when the timer runs out.";
 
             _takenLabel.text = player.Augments.Count == 0
                 ? ""

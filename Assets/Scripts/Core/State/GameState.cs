@@ -17,6 +17,13 @@ namespace Game.Core.State
         /// never trusted from a client's own clock.</summary>
         public DateTime? ShopDeadlineUtc { get; set; }
 
+        /// <summary>Set while CurrentSlotType is Augment: the wall-clock time the
+        /// pick window closes, past which CommandResolver auto-picks for anyone
+        /// who hasn't chosen. Null outside the augment phase. Compared against
+        /// DateTime.UtcNow on whichever side is authoritative — never trusted
+        /// from a client's own clock.</summary>
+        public DateTime? AugmentDeadlineUtc { get; set; }
+
         // Rotation pointer. SlotIndex is the single source of truth for
         // "where are we in the turn structure" — everything else is derived.
         public int SlotIndex { get; set; }

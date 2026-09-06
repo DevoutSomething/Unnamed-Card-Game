@@ -446,6 +446,14 @@ namespace Game.Client
                     _server.Submit(new ForceEndShopCommand());
             }
 
+            if (_server.State.CurrentSlotType == SlotType.Augment)
+            {
+                _augment.TickCountdown(_server.State);
+                var deadline = _server.State.AugmentDeadlineUtc;
+                if (deadline.HasValue && DateTime.UtcNow >= deadline.Value)
+                    _server.Submit(new ForceEndAugmentCommand());
+            }
+
 #if ENABLE_INPUT_SYSTEM
             var keyboard = UnityEngine.InputSystem.Keyboard.current;
             if (keyboard == null) return;

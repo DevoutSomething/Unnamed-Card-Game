@@ -280,6 +280,75 @@ namespace Game.Core.Tests
                 "an augment you already own is never offered again");
         }
 
+        // ---------- the timer ----------
+
+        [Test]
+        public void EnterAugmentPhase_SetsA30SecondDeadline()
+        {
+            ConfigureAll(FourAugments());
+            var before = System.DateTime.UtcNow;
+            var state = NewGameAtAugment();
+
+            Assert.IsTrue(state.AugmentDeadlineUtc.HasValue);
+            var remaining = state.AugmentDeadlineUtc.Value - before;
+            Assert.Greater(remaining.TotalSeconds, 29, "~30s window (allowing for test execution time)");
+            Assert.LessOrEqual(remaining.TotalSeconds, 30.5);
+        }
+
+        [Test]
+        public void ForceEndAugment_BeforeDeadline_IsANoOp()
+        {
+            ConfigureAll(FourAugments());
+            var state = NewGameAtAugment();
+
+            var events = Submit(state, new ForceEndAugmentCommand());
+
+            AssertNoRejections(events);
+            Assert.AreEqual(SlotType.Augment, state.CurrentSlotType, "deadline hasn't passed yet");
+            Assert.IsFalse(state.Players[0].AugmentPicked);
+        }
+
+        [Test]
+        public void ForceEndAugment_AfterDeadline_PicksForWhoeverDidNotChoose()
+        {
+            ConfigureAll(FourAugments());
+            var state = NewGameAtAugment();
+            var p0 = state.Players[0];
+            var p1 = state.Players[1];
+
+            // P0 chooses deliberately; P1 walks away.
+            string chosen = p0.AugmentOffers[0];
+            Submit(state, new SelectAugmentCommand(0, chosen));
+            var p1Options = new List<string>(p1.AugmentOffers);
+
+            state.AugmentDeadlineUtc = System.DateTime.UtcNow.AddSeconds(-1);
+            var events = Submit(state, new ForceEndAugmentCommand());
+
+            AssertNoRejections(events);
+            Assert.AreEqual(chosen, p0.Augments.Single(), "a deliberate pick is never overwritten");
+            Assert.AreEqual(1, p1.Augments.Count, "the idle player still gets one");
+            CollectionAssert.Contains(p1Options, p1.Augments.Single(),
+                "and it comes from their own options");
+            Assert.AreEqual(SlotType.Action, state.CurrentSlotType, "the rotation moves on");
+            Assert.IsNull(state.AugmentDeadlineUtc, "deadline cleared on leaving");
+        }
+
+        [Test]
+        public void ForceEndAugment_AutoPickAppliesTheAugmentsEffect()
+        {
+            ConfigureAll(Augment("overcharge", "energyboost", 1));
+            var state = NewGameAtAugment();
+            var p0 = state.Players[0];
+            int capBefore = p0.EnergyPerTurn;
+
+            state.AugmentDeadlineUtc = System.DateTime.UtcNow.AddSeconds(-1);
+            Submit(state, new ForceEndAugmentCommand());
+
+            Assert.AreEqual("overcharge", p0.Augments.Single());
+            Assert.AreEqual(capBefore + 1, p0.EnergyPerTurn,
+                "an auto-picked augment takes effect exactly like a chosen one");
+        }
+
         // ---------- the four effects ----------
 
         [Test]
