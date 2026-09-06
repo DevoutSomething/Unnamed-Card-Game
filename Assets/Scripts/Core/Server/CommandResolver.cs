@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Game.Cards;
+using Game.Core.Augments;
 using Game.Core.Abilities;
 using Game.Core.Commands;
 using Game.Core.Events;
@@ -47,6 +48,7 @@ namespace Game.Core.Server
                 case RemoveCardFromDeckCommand rem: HandleRemoveCardFromDeck(state, rem, events);  break;
                 case EndShopCommand es:             HandleEndShop(state, es, events);              break;
                 case ForceEndShopCommand fe:        HandleForceEndShop(state, fe, events);         break;
+                case SelectAugmentCommand sa:       HandleSelectAugment(state, sa, events);        break;
                 default:
                     events.Add(new CommandRejectedEvent(cmd, "unknown command type"));
                     break;
@@ -287,6 +289,18 @@ namespace Game.Core.Server
 
             player.cardsInHand.Remove(card);
             events.AddRange(placement);
+
+            // "Your guys get +X/+X" has to reach guys played AFTER the augment
+            // was taken, not just the ones standing when it was picked.
+            if (isGuy)
+            {
+                int augmentBuff = AugmentRuntime.Sum(
+                    player, AbilityTrigger.Passive, AbilityEffect.BuffStats, AbilityTarget.OwnedGuys);
+                if (augmentBuff > 0)
+                {
+                    MutationHelper.ApplyStatModifier(card, augmentBuff, augmentBuff, events);
+                }
+            }
 
             // Lane effects hit the guy that just arrived. Guys only: a spell has
             // no stat line to modify, and "play a guy here" means a guy.
@@ -559,6 +573,139 @@ namespace Game.Core.Server
             events.Add(new CardRemovedFromDeckEvent(player.Id, card.InstanceId, cost));
         }
 
+        // ---------------------------------------------------------------
+        // Augments
+        // ---------------------------------------------------------------
+
+        /// <summary>How many augments each player chooses between.</summary>
+        private const int AugmentOfferCount = 3;
+
+        /// <summary>
+        /// A rotation ends in EITHER an augment pick or a shop visit, never both.
+        /// Both slots sit in the rotation table; whichever one isn't this
+        /// rotation's turn passes straight through, the same way an Event slot
+        /// does. Even rotations augment, odd rotations shop — so the very first
+        /// interlude of a match is an augment pick.
+        /// </summary>
+        private static bool IsAugmentRotation(GameState state) => state.RotationIndex % 2 == 0;
+
+        /// <summary>
+        /// Rotation lands on Augment: deal each player their own set of choices
+        /// from the augments they don't already own. A player with nothing left
+        /// to be offered is auto-marked picked, so a fully-augmented match walks
+        /// straight through the phase instead of deadlocking on it.
+        /// </summary>
+        private static void EnterAugmentPhase(GameState state, List<GameEvent> events)
+        {
+            if (!IsAugmentRotation(state))
+            {
+                AdvanceSlot(state, events);   // this rotation's interlude is the shop
+                return;
+            }
+
+            foreach (var player in state.Players)
+            {
+                player.AugmentPicked = false;
+                player.AugmentOffers.Clear();
+
+                var candidates = new List<AugmentDefinition>();
+                foreach (var def in AugmentCatalogRuntime.Pool)
+                    if (!player.Augments.Contains(def.AugmentId)) candidates.Add(def);
+
+                foreach (var def in state.Rng.PickN(candidates, AugmentOfferCount))
+                    player.AugmentOffers.Add(def.AugmentId);
+
+                if (player.AugmentOffers.Count == 0)
+                {
+                    player.AugmentPicked = true;   // nothing left to take
+                    continue;
+                }
+
+                events.Add(new AugmentOfferedEvent(player.Id, player.AugmentOffers.ToArray()));
+            }
+
+            // Neither player had anything to choose: don't strand the rotation.
+            if (state.Players[0].AugmentPicked && state.Players[1].AugmentPicked)
+            {
+                AdvanceSlot(state, events);
+            }
+        }
+
+        private static void HandleSelectAugment(GameState state, SelectAugmentCommand cmd, List<GameEvent> events)
+        {
+            if (state.CurrentSlotType != SlotType.Augment)
+            {
+                events.Add(new CommandRejectedEvent(cmd, "not the augment phase"));
+                return;
+            }
+
+            var player = state.Players[cmd.PlayerId];
+            if (player.AugmentPicked)
+            {
+                events.Add(new CommandRejectedEvent(cmd, "you've already taken an augment this phase"));
+                return;
+            }
+
+            if (!player.AugmentOffers.Contains(cmd.AugmentId))
+            {
+                events.Add(new CommandRejectedEvent(cmd, "that augment isn't one of your options"));
+                return;
+            }
+
+            var def = AugmentCatalogRuntime.Get(cmd.AugmentId);
+            if (def == null)
+            {
+                events.Add(new CommandRejectedEvent(cmd, $"unknown augment '{cmd.AugmentId}'"));
+                return;
+            }
+
+            player.Augments.Add(def.AugmentId);
+            player.AugmentPicked = true;
+            player.AugmentOffers.Clear();
+            events.Add(new AugmentSelectedEvent(player.Id, def.AugmentId));
+
+            ApplyAugmentOnTake(state, player, def, events);
+
+            if (state.Players[0].AugmentPicked && state.Players[1].AugmentPicked)
+            {
+                AdvanceSlot(state, events);
+            }
+        }
+
+        /// <summary>
+        /// The one-shot half of an augment, applied the moment it's taken. The
+        /// ongoing half (per-turn draws and gold) is read live by the hooks in
+        /// ApplyStartOfTurn, and the guy buff is re-applied to each guy played
+        /// later — see AugmentRuntime's summary.
+        /// </summary>
+        private static void ApplyAugmentOnTake(
+            GameState state, Player player, AugmentDefinition def, List<GameEvent> events)
+        {
+            // Extra energy is a permanent cap bump, so the player simply has a
+            // bigger battery from now on — 4/4 where they had 3/3. Nothing in
+            // the refill path has to know augments exist.
+            int bonusEnergy = AugmentRuntime.SumOf(
+                def, AbilityTrigger.Passive, AbilityEffect.GainEnergy, AbilityTarget.Owner);
+            if (bonusEnergy > 0)
+            {
+                player.EnergyPerTurn += bonusEnergy;
+                player.CurrentEnergy += bonusEnergy;   // usable immediately, not next refill
+                events.Add(new EnergyChangedEvent(player.Id, player.CurrentEnergy, player.EnergyPerTurn));
+            }
+
+            // "Your guys get +X/+X" reaches the ones already deployed; guys
+            // played later pick it up in HandlePlayCard.
+            int guyBuff = AugmentRuntime.SumOf(
+                def, AbilityTrigger.Passive, AbilityEffect.BuffStats, AbilityTarget.OwnedGuys);
+            if (guyBuff > 0)
+            {
+                foreach (var lane in state.Lanes)
+                    foreach (var card in lane.SublaneOf(player.Id).Cards)
+                        if (card.CurrentHealth > 0)
+                            MutationHelper.ApplyStatModifier(card, guyBuff, guyBuff, events);
+            }
+        }
+
         private static void HandleEndShop(GameState state, EndShopCommand cmd, List<GameEvent> events)
         {
             if (!TryShopGuard(state, cmd, events, out var player)) return;
@@ -625,9 +772,8 @@ namespace Game.Core.Server
                     EnterShop(state, events);
                     break; // awaits BuyCard/RemoveCardFromDeck/EndShop commands from both players
                 case SlotType.Augment:
-                    // TODO: these need player input eventually. Skipped until built.
-                    AdvanceSlot(state, events);
-                    break;
+                    EnterAugmentPhase(state, events);
+                    break; // awaits a SelectAugmentCommand from both players
 
                 case SlotType.Action:
                     // A new turn begins: settle here, fire turn keywords.
@@ -649,6 +795,22 @@ namespace Game.Core.Server
 
             var player = state.Players[state.ActivePlayerId];
             var opponent = state.Players[1 - player.Id];
+
+            // Augments fire on the same beat a guy's StartOfTurn keywords do —
+            // this is the codebase's definition of a turn (one action slot).
+            int augmentDraws = AugmentRuntime.Sum(
+                player, AbilityTrigger.StartOfTurn, AbilityEffect.DrawCard, AbilityTarget.Owner);
+            for (int i = 0; i < augmentDraws; i++)
+            {
+                DrawCard(state, player, events);
+            }
+
+            int augmentGold = AugmentRuntime.Sum(
+                player, AbilityTrigger.StartOfTurn, AbilityEffect.GainGold, AbilityTarget.Owner);
+            if (augmentGold > 0)
+            {
+                MutationHelper.GiveGold(player, augmentGold, events);
+            }
 
             foreach (var lane in state.Lanes)
             {
@@ -766,6 +928,12 @@ namespace Game.Core.Server
         /// </summary>
         private static void EnterShop(GameState state, List<GameEvent> events)
         {
+            if (IsAugmentRotation(state))
+            {
+                AdvanceSlot(state, events);   // this rotation's interlude was the augment pick
+                return;
+            }
+
             state.ShopDeadlineUtc = DateTime.UtcNow.AddSeconds(ShopTimeLimitSeconds);
 
             foreach (var player in state.Players)

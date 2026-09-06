@@ -37,6 +37,7 @@ namespace Game.Core.Abilities
         TargetPlayer,   // this card attacks the enemy player directly, ignoring blockers (precision)
         ApplyStatus,    // add StatusId to the target's StatusEffects
         Instakill,      // any nonzero combat damage this card deals is lethal (instakill)
+        GainEnergy,     // raise the owner's energy-per-turn cap by X (augments)
     }
 
     /// <summary>Who an ability affects.</summary>
@@ -50,6 +51,8 @@ namespace Game.Core.Abilities
         AlliesInLane,
         EnemiesInLane,
         RandomEnemy,
+        OwnedGuys,      // every guy the owner controls, anywhere on the board —
+                        // including ones played later (augments)
     }
 
     /// <summary>

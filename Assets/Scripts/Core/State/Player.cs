@@ -42,6 +42,17 @@ namespace Game.Core.State {
         public bool ShopReady;
         public int ShopRemovalsThisVisit;
 
+        // Augments this player has taken, by AugmentId. Permanent for the rest
+        // of the match — nothing ever removes one. AugmentRuntime reads this to
+        // resolve their keywords.
+        public List<string> Augments = new List<string>();
+
+        // Augment-phase-scoped state, reset every time an Augment slot begins
+        // (see CommandResolver.EnterAugmentPhase): the ids currently on offer,
+        // and whether this player has already picked one this phase.
+        public List<string> AugmentOffers = new List<string>();
+        public bool AugmentPicked;
+
         public Player(int id) {
             Id = id;
             MaxHealth = 30;

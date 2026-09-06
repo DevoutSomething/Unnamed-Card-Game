@@ -24,8 +24,9 @@ namespace Game.Core.State
             new(SlotType.Action, 1), new(SlotType.Action, 0),
             new(SlotType.Action, 0), new(SlotType.Action, 1),
             new(SlotType.Combat),
-            // For now the rotation's final slot is always Shop. Later this
-            // becomes a random pick between Shop/Event/Augment.
+            // The rotation's tail: pick an augment, then shop. Later the Event
+            // slot joins these two in some order.
+            new(SlotType.Augment),
             new(SlotType.Shop),
         };
 

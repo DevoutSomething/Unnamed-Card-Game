@@ -209,6 +209,36 @@
       "target": "Self",
       "costPerX": 1.0,
       "flatCost": 0.25
+    },
+    {
+      "abilityId": "turndraw",
+      "displayName": "Turn Draw",
+      "description": "Draw {X} extra card(s) at the start of your turn.",
+      "trigger": "StartOfTurn",
+      "effect": "DrawCard",
+      "target": "Owner",
+      "costPerX": 1.5,
+      "flatCost": 0.5
+    },
+    {
+      "abilityId": "energyboost",
+      "displayName": "Energy Boost",
+      "description": "Permanently gain +{X} maximum energy.",
+      "trigger": "Passive",
+      "effect": "GainEnergy",
+      "target": "Owner",
+      "costPerX": 2.0,
+      "flatCost": 0.5
+    },
+    {
+      "abilityId": "armyboost",
+      "displayName": "Army Boost",
+      "description": "Your guys permanently get +{X}/+{X}.",
+      "trigger": "Passive",
+      "effect": "BuffStats",
+      "target": "OwnedGuys",
+      "costPerX": 2.0,
+      "flatCost": 0.5
     }
   ]
 }

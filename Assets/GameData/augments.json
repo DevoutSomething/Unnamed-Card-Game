@@ -1,0 +1,44 @@
+{
+  "augments": [
+    {
+      "augmentId": "study_habit",
+      "displayName": "Study Habit",
+      "description": "Draw an extra card at the start of each of your turns.",
+      "rarity": "Rare",
+      "tags": [],
+      "abilities": [
+        { "id": "turndraw", "x": 1 }
+      ]
+    },
+    {
+      "augmentId": "dividends",
+      "displayName": "Dividends",
+      "description": "Gain 30 gold at the start of each of your turns.",
+      "rarity": "Rare",
+      "tags": [],
+      "abilities": [
+        { "id": "goldgen", "x": 30 }
+      ]
+    },
+    {
+      "augmentId": "overcharge",
+      "displayName": "Overcharge",
+      "description": "Permanently gain +1 maximum energy.",
+      "rarity": "Epic",
+      "tags": [],
+      "abilities": [
+        { "id": "energyboost", "x": 1 }
+      ]
+    },
+    {
+      "augmentId": "drill_sergeant",
+      "displayName": "Drill Sergeant",
+      "description": "Your guys permanently get +1/+1.",
+      "rarity": "Epic",
+      "tags": [],
+      "abilities": [
+        { "id": "armyboost", "x": 1 }
+      ]
+    }
+  ]
+}

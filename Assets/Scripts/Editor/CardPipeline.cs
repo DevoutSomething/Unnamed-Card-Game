@@ -18,6 +18,8 @@ namespace Game.Cards.EditorTools {
     public static class CardPipeline {
 
         public const string CardJsonDir = "Assets/GameData/cards";
+        public const string AugmentsJsonPath = "Assets/GameData/augments.json";
+        public const string AugmentAssetDir = "Assets/Resources/Augments";
         public const string CardArtDir = "Assets/GameData/art/cards";
         public const string BorderArtDir = "Assets/GameData/art/borders";
         public const string BordersJsonPath = "Assets/GameData/borders.json";
@@ -127,12 +129,27 @@ namespace Game.Cards.EditorTools {
         public static void ImportAll() {
             int abilities = ImportAbilities();
             int heroes = ImportHeroes();
+            int augments = ImportAugments();
             int cards = ImportCardJson();
             int arts = ImportCardArt();
             int borders = ImportBorders();
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log($"[CardPipeline] Import done: {cards} card(s), {abilities} abilities, {heroes} hero(es), {arts} art(s), {borders} border(s).");
+            Debug.Log($"[CardPipeline] Import done: {cards} card(s), {abilities} abilities, {heroes} hero(es), " +
+                      $"{augments} augment(s), {arts} art(s), {borders} border(s).");
+        }
+
+        /// <summary>Publishes augments.json into Resources so AugmentLoader finds
+        /// it at runtime — same shape as ImportHeroes/ImportAbilities.</summary>
+        static int ImportAugments() {
+            if (!File.Exists(Abs(AugmentsJsonPath))) {
+                Debug.LogWarning($"[CardPipeline] {AugmentsJsonPath} not found — no augments will be offered.");
+                return 0;
+            }
+            Directory.CreateDirectory(Abs(AugmentAssetDir));
+            File.Copy(Abs(AugmentsJsonPath), Abs($"{AugmentAssetDir}/augments.json"), overwrite: true);
+            AssetDatabase.ImportAsset($"{AugmentAssetDir}/augments.json");
+            return AugmentLoader.Parse(File.ReadAllText(Abs(AugmentsJsonPath))).Count;
         }
 
         /// <summary>Publishes abilities.json into Resources so AbilityLoader finds it at runtime.</summary>

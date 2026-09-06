@@ -65,6 +65,7 @@ namespace Game.Client
 
         private BoardView _board;
         private ShopView _shop;
+        private AugmentView _augment;
         private LobbyView _lobby;
         private CardDatabase _db;
         private CardSkinLibrary _skins;
@@ -132,6 +133,7 @@ namespace Game.Client
             // imported assets), skins for rendering, then the pre-match menu.
             AbilityLoader.Bootstrap();
             HeroLoader.Bootstrap();
+            AugmentLoader.Bootstrap();
             _db = new CardDatabase();
             _skins = new CardSkinLibrary();
             CardCatalogRuntime.Configure(_db.All);
@@ -265,6 +267,11 @@ namespace Game.Client
                 _shop = new ShopView();
                 _shop.Build(this, _db, _skins);
             }
+            if (_augment == null)
+            {
+                _augment = new AugmentView();
+                _augment.Build(this);
+            }
             _board.SetVisible(true);
             _lobby.Hide();
         }
@@ -381,6 +388,14 @@ namespace Game.Client
         {
             if (_server.State.IsGameOver) return;
             _server.Submit(new RemoveCardFromDeckCommand(ShopViewerId, card.InstanceId));
+            Redraw();
+        }
+
+        /// <summary>One of the three augment panels clicked: take it permanently.</summary>
+        public void SelectAugment(string augmentId)
+        {
+            if (_server.State.IsGameOver) return;
+            _server.Submit(new SelectAugmentCommand(ShopViewerId, augmentId));
             Redraw();
         }
 
@@ -532,6 +547,10 @@ namespace Game.Client
             bool inShop = _server.State.CurrentSlotType == SlotType.Shop;
             _shop.SetVisible(inShop);
             if (inShop) _shop.Redraw(_server.State, ShopViewerId);
+
+            bool inAugment = _server.State.CurrentSlotType == SlotType.Augment;
+            _augment.SetVisible(inAugment);
+            if (inAugment) _augment.Redraw(_server.State, ShopViewerId);
         }
     }
 }

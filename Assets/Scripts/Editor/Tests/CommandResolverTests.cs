@@ -354,7 +354,7 @@ namespace Game.Core.Tests
             var state = NewGame();
 
             // expected ActivePlayerId after each successive EndPhase from an empty board.
-            // rotation: P0 P1 P1 P0 | Combat | P1 P0 P0 P1 | Combat Shop
+            // rotation: P0 P1 P1 P0 | Combat | P1 P0 P0 P1 | Combat | interlude
             int[] expectedActive = { 1, 1, 0, /*combat*/ 1, 0, 0, 1 };
 
             foreach (int expected in expectedActive)
@@ -365,15 +365,12 @@ namespace Game.Core.Tests
                 Assert.AreEqual(expected, state.ActivePlayerId);
             }
 
-            // the last EndPhase resolves the second combat and settles on Shop —
-            // it awaits both players' EndShopCommand rather than auto-wrapping.
-            var shopEvents = Submit(state, new EndPhaseCommand(state.ActivePlayerId));
-            AssertNoRejections(shopEvents);
-            Assert.AreEqual(SlotType.Shop, state.CurrentSlotType, "settles on the shop slot after the second combat");
-            Assert.AreEqual(0, state.RotationIndex, "still mid-rotation — the shop hasn't wrapped yet");
-
-            Submit(state, new EndShopCommand(0));
-            var wrapEvents = Submit(state, new EndShopCommand(1));
+            // The 8th EndPhase resolves the second combat and runs the rotation's
+            // interlude. Rotation 0 is an AUGMENT rotation (they alternate), and
+            // this fixture configures no augments — so there's nothing to offer,
+            // the augment phase passes through, the shop is skipped as not-its-
+            // rotation, and the whole thing wraps straight into rotation 1.
+            var wrapEvents = Submit(state, new EndPhaseCommand(state.ActivePlayerId));
             AssertNoRejections(wrapEvents);
 
             Assert.AreEqual(1, state.RotationIndex, "one full rotation completed");

@@ -26,6 +26,10 @@ public record BuyCardCommand(int PlayerId, int ShopCardInstanceId) : Command(Pla
 public record RemoveCardFromDeckCommand(int PlayerId, int DeckCardInstanceId) : Command(PlayerId);
 public record EndShopCommand(int PlayerId) : Command(PlayerId);
 
+/// <summary>Picks one of the three augments offered this phase. AugmentId must
+/// be one of the player's own current offers.</summary>
+public record SelectAugmentCommand(int PlayerId, string AugmentId) : Command(PlayerId);
+
 /// <summary>Polled by every client's GameController.Update() while the shop's
 /// timer is running (see CommandResolver.ShopTimeLimitSeconds); a no-op unless
 /// the resolver's own clock confirms the deadline has actually passed, so it's
